@@ -1,0 +1,1 @@
+'use client';import {useParams} from 'next/navigation';import {Workspace} from '@/components/workspace';export default function Section(){const params=useParams();return <Workspace section={String(params.section)}/>}
