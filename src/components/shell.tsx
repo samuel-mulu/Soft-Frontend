@@ -65,6 +65,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
       try {
         const me = await api('/auth/me');
         if (cancelled) return;
+        if (me.role === 'CUSTOMER') {
+          router.replace('/portal');
+          return;
+        }
         saveSession(getToken(), me);
         setUser(me);
       } catch {
@@ -115,7 +119,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               href={`/${id}`}
               title={sidebarCollapsed ? label : undefined}
               className={`sidebar-nav-link flex items-center gap-3 rounded-xl px-4 py-3 mb-1 font-semibold text-[13px] ${
-                pathname === `/${id}`
+                pathname === `/${id}` || pathname.startsWith(`/${id}/`)
                   ? 'bg-[#e7f4ed] text-[#126a4c]'
                   : 'text-[#68776e] hover:bg-[#f6f8f6]'
               }`}
@@ -188,7 +192,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={() => (id === 'more' ? setMobileMore(true) : router.push('/' + id))}
             className={`flex flex-col items-center gap-1 text-[10px] font-bold min-w-[55px] ${
-              pathname === '/' + id ? 'text-[#177554]' : 'text-[#85938a]'
+              pathname === '/' + id || pathname.startsWith('/' + id + '/') ? 'text-[#177554]' : 'text-[#85938a]'
             }`}
           >
             <Icon size={21} />
