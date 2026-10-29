@@ -1,6 +1,6 @@
 'use client';
 import {useState} from 'react';import Link from 'next/link';import {useRouter} from 'next/navigation';import {useQuery,useQueryClient} from '@tanstack/react-query';
-import {ApiRequestError,friendlySaleError,inferSaleFieldErrors,postSaleWithRetry,stockIssues,type SaleFieldErrors} from '@/lib/sale-errors';import {toast} from 'sonner';import {api,post,patch,money,amount,date,getUser} from '@/lib/api';import {printSaleReceipt,downloadSaleReceipt,resolveReceiptLogoUrl,type SaleReceiptData} from '@/lib/sale-receipt';import {printReport} from '@/lib/report-print';
+import {ApiRequestError,friendlySaleError,inferSaleFieldErrors,postSaleWithRetry,stockIssues,type SaleFieldErrors} from '@/lib/sale-errors';import {toast} from 'sonner';import {api,post,patch,money,amount,date,getUser} from '@/lib/api';import {printSaleReceipt,downloadSaleReceipt,resolveReceiptLogoUrl,type SaleReceiptData} from '@/lib/sale-receipt';import {printReport} from '@/lib/report-print';import {getBusinessName} from '@/lib/brand';
 import {DataLoadSkeleton,LoadError,SkeletonTable,SkeletonStatGrid} from '@/components/ui/skeleton';
 import {DesktopTable,ResponsiveList,type ListColumn} from '@/components/responsive-list';import {Plus,Search,ArrowRight,ArrowLeft,Download,RefreshCw,ShoppingBag,PackageCheck,Wallet,GlassWater,TrendingUp,Users,Receipt,ChevronLeft,ChevronRight,ChevronDown,Printer,X} from 'lucide-react';
 type R=Record<string,any>;
@@ -99,7 +99,7 @@ function SaleForm(){
   return {bottles:[...agg.entries()].map(([bottleTypeId,quantity])=>({bottleTypeId,quantity}))};
  }
  function buildReceiptSnapshot(invoiceNo:string,createdAt?:string):SaleReceiptData{
-  const businessName=process.env.NEXT_PUBLIC_BUSINESS_NAME||'FlowStock Distribution';
+  const businessName=getBusinessName();
   const cust=customerId?customers.find((c:R)=>c.id===customerId):null;
   const customerLabel=cust?.name||(guestName?.trim()||'Walk-in guest');
   const customerPhone=cust?.phone?.trim()||undefined;

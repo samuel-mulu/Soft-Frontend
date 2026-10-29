@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { api, getToken, getUser, logout, saveSession } from '@/lib/api';
 import { SplashScreen } from '@/components/ui/skeleton';
+import { BRAND_MARK, getLogoPath } from '@/lib/brand';
 
 export function PortalShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -50,10 +51,10 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col bg-[var(--bg)]">
       <header className="portal-header sticky top-0 z-20 bg-white border-b border-[#e5eae5] px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <img src="/logo.svg" alt="" className="w-9 h-9 rounded-xl shrink-0" width={36} height={36} />
+          <img src={getLogoPath()} alt="" className="w-9 h-9 rounded-xl shrink-0" width={36} height={36} />
           <div className="min-w-0">
-            <p className="text-sm font-extrabold truncate">{displayName}</p>
-            <p className="muted text-xs truncate">{user.phone || 'Customer portal'}</p>
+            <p className="text-sm font-extrabold truncate">{BRAND_MARK}</p>
+            <p className="muted text-xs truncate">{displayName}{user.phone ? ` · ${user.phone}` : ''}</p>
           </div>
         </div>
         <button

@@ -1,4 +1,4 @@
-# FlowStock — Next.js frontend for Soft Drink Distribution API B0–B9
+# BG Stock — Brhane GebreCherkos (Next.js frontend)
 
 Responsive cashier-first interface with desktop sidebar, mobile bottom navigation, TanStack React Query, Tailwind CSS v4 and live NestJS REST calls. No mock data.
 

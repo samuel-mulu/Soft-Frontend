@@ -1,4 +1,5 @@
 import { amount } from '@/lib/api';
+import { getBusinessName, BRAND_MARK } from '@/lib/brand';
 
 export type ReportActivityLine = {
   date: string;
@@ -92,7 +93,7 @@ function buildReportHtml(data: ReportPrintData, autoPrint: boolean) {
 </style></head><body>
   <div class="toolbar no-print"><button type="button" onclick="window.print()">Print / Save as PDF</button></div>
   ${autoPrint ? `<script>window.addEventListener('load',function(){setTimeout(function(){window.focus();window.print();},200);});<\/script>` : ''}
-  <h1>FlowStock — ${viewTitle(data.view)}</h1>
+  <h1>${escapeHtml(getBusinessName())} — ${escapeHtml(BRAND_MARK)} · ${viewTitle(data.view)}</h1>
   <p class="sub">${escapeHtml(data.periodLabel)} · ${data.from}${data.from !== data.to ? ` → ${data.to}` : ''}</p>
   ${metrics}
   ${data.view === 'summary' && !data.lines.length ? '' : `<h2>${data.view === 'summary' ? 'All activity' : 'Details'}</h2><table><thead>${tableHead}</thead><tbody>${lineRows || `<tr><td colspan="${colSpan}">No rows for this filter.</td></tr>`}</tbody></table>`}

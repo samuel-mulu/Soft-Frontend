@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { api, getToken, logout, saveSession } from '@/lib/api';
 import { SplashScreen } from '@/components/ui/skeleton';
+import { BRAND_MARK, BRAND_OWNER, getLogoPath } from '@/lib/brand';
 
 const SIDEBAR_KEY = 'fs_sidebar_collapsed';
 
@@ -106,8 +107,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
         }`}
       >
         <div className="sidebar-brand p-6 flex items-center gap-3 text-xl font-extrabold min-h-[88px]">
-          <img src="/logo.svg" alt="" className="w-10 h-10 rounded-xl shrink-0" />
-          <span className="sidebar-brand-text truncate">FlowStock</span>
+          <img src={getLogoPath()} alt="" className="w-10 h-10 rounded-xl shrink-0" />
+          <div className="sidebar-brand-text min-w-0 leading-tight">
+            <span className="block truncate">{BRAND_MARK}</span>
+            <span className="block truncate text-[11px] font-semibold text-[#728078]">{BRAND_OWNER}</span>
+          </div>
         </div>
         <div className="sidebar-section-label px-4 pb-3 text-[10px] tracking-[.15em] font-bold text-[#94a49a]">
           WORKSPACE
@@ -157,7 +161,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
               {sidebarCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
             </button>
             <div className="lg:hidden font-extrabold flex items-center gap-2 text-[#177554] min-w-0">
-              <img src="/logo.svg" alt="" className="w-8 h-8 rounded-lg shrink-0" /> FlowStock
+              <img src={getLogoPath()} alt="" className="w-8 h-8 rounded-lg shrink-0" />
+              <span className="truncate">{BRAND_MARK}</span>
             </div>
             <div className="hidden lg:block text-xs font-bold muted truncate">DISTRIBUTION WORKSPACE</div>
           </div>

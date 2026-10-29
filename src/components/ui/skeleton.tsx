@@ -1,5 +1,7 @@
 'use client';
 
+import { BRAND_MARK, BRAND_OWNER, getLogoPath } from '@/lib/brand';
+
 type BoneProps = {
   className?: string;
   style?: React.CSSProperties;
@@ -35,11 +37,11 @@ export function SplashScreen({ message = 'Loading workspace…' }: { message?: s
     <div className="app-splash" role="status" aria-live="polite" aria-busy="true">
       <div className="app-splash-card">
         <div className="app-splash-logo-wrap">
-          <img src="/logo.svg" alt="" className="app-splash-logo" />
+          <img src={getLogoPath()} alt="" className="app-splash-logo" />
           <span className="app-splash-ring" aria-hidden />
         </div>
-        <p className="app-splash-brand">FlowStock</p>
-        <p className="app-splash-tag">Distribution workspace</p>
+        <p className="app-splash-brand">{BRAND_OWNER}</p>
+        <p className="app-splash-tag">{BRAND_MARK}</p>
         <div className="app-splash-bar">
           <span className="app-splash-bar-fill" />
         </div>

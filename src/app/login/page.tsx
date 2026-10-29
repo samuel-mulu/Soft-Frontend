@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { api, saveSession } from '@/lib/api';
 import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
+import { BRAND_MARK, BRAND_OWNER, getLogoPath } from '@/lib/brand';
 
 type Mode = 'customer' | 'staff';
 
@@ -76,10 +77,11 @@ export default function Login() {
         </button>
 
         <div className="login-card-head">
-          <img src="/logo.svg" alt="" className="login-card-logo" width={48} height={48} />
-          <div>
-            <p className="login-card-brand">FlowStock</p>
-            <h1 className="login-card-title">{mode === 'customer' ? 'My account' : 'Team sign in'}</h1>
+          <img src={getLogoPath()} alt="" className="login-card-logo" width={48} height={48} />
+          <div className="min-w-0">
+            <p className="login-card-brand">{BRAND_MARK}</p>
+            <h1 className="login-card-title leading-tight">{BRAND_OWNER}</h1>
+            <p className="muted text-xs mt-1 font-semibold">{mode === 'customer' ? 'My account' : 'Team sign in'}</p>
           </div>
         </div>
 

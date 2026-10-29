@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="BG Stock">
   <rect width="64" height="64" rx="14" fill="#177554"/>
-  <path d="M18 22h28v6H18v-6zm0 10h28v4H18v-4zm0 8h20v4H18v-4z" fill="#fff" opacity=".95"/>
-  <path d="M32 14l14 8v28H18V22l14-8z" stroke="#fff" stroke-width="2.5" fill="none"/>
+  <text x="32" y="36" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="22" fill="#ffffff">BG</text>
+  <text x="32" y="50" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="8.5" letter-spacing="0.12em" fill="#ffffff" opacity="0.92">STOCK</text>
 </svg>

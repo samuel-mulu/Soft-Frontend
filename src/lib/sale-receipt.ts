@@ -1,3 +1,5 @@
+import { getLogoUrl } from '@/lib/brand';
+
 export type SaleReceiptData={
  businessName:string;
  logoUrl?:string;
@@ -35,9 +37,7 @@ function receiptFileName(ref:string){
 }
 
 export function resolveReceiptLogoUrl(){
- if(typeof window==='undefined')return '';
- const path=process.env.NEXT_PUBLIC_LOGO_PATH||'/logo.svg';
- return `${window.location.origin}${path.startsWith('/')?path:`/${path}`}`;
+ return getLogoUrl();
 }
 
 export function buildSaleReceiptHtml(d:SaleReceiptData,opts?:{autoPrint?:boolean}){
