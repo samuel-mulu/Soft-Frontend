@@ -8,13 +8,13 @@ export type SaleReceiptData={
  customerPhone?:string;
  paymentMode:'total'|'detail';
  paymentMethodLabel?:string;
- moneyLines:{name:string;qty:number;unitPrice:string;lineTotal:string;paid?:string;method?:string;credit?:string}[];
+ moneyLines:{name:string;qty:number;qtyLabel?:string;unitPrice:string;lineTotal:string;paid?:string;method?:string;credit?:string}[];
  subtotal:string;
  discount:string;
  total:string;
  received:string;
  remaining:string;
- bottleLines?:{product:string;sold:number;returned:number;withCustomer:number}[];
+ bottleLines?:{product:string;sold:number;soldLabel?:string;returned:number;returnedLabel?:string;withCustomer:number}[];
  bottleBalances?:{name:string;balance:number}[];
  note?:string;
  receiptRef?:string;
@@ -45,7 +45,8 @@ export function buildSaleReceiptHtml(d:SaleReceiptData,opts?:{autoPrint?:boolean
   ?['Product','Qty','Unit','Line','Paid','Method','Credit']
   :['Product','Qty','Unit','Line'];
  const moneyBody=d.moneyLines.map(l=>{
-  const base=[esc(l.name),String(l.qty),esc(l.unitPrice),esc(l.lineTotal)];
+  const qtyCell=l.qtyLabel?`${esc(l.qtyLabel)} <span class="muted">(${l.qty} units)</span>`:String(l.qty);
+  const base=[esc(l.name),qtyCell,esc(l.unitPrice),esc(l.lineTotal)];
   if(d.paymentMode==='detail')base.push(esc(l.paid||'—'),esc(l.method||'—'),esc(l.credit||'—'));
   return moneyRow(base);
  }).join('');
@@ -53,14 +54,14 @@ export function buildSaleReceiptHtml(d:SaleReceiptData,opts?:{autoPrint?:boolean
  const bottleBlock=d.bottleLines?.length?`
   <h2 class="section">Bottles · this sale</h2>
   <table class="tbl compact"><thead>${moneyRow(['Product','Sold','Returned','Kept'],true)}</thead>
-  <tbody>${d.bottleLines.map(b=>moneyRow([esc(b.product),String(b.sold),String(b.returned),String(b.withCustomer)])).join('')}</tbody></table>`:'';
+  <tbody>${d.bottleLines.map(b=>{const sold=b.soldLabel?`${esc(b.soldLabel)} (${b.sold})`:String(b.sold);const ret=b.returnedLabel?`${esc(b.returnedLabel)} (${b.returned})`:String(b.returned);return moneyRow([esc(b.product),sold,ret,String(b.withCustomer)]);}).join('')}</tbody></table>`:'';
 
  const balanceRows:string[]=[];
  const creditWarn=!/^0\.00 ETB$/i.test(d.remaining.trim());
  balanceRows.push(`<div class="bal-row"><span>Money credit (this sale)</span><strong class="${creditWarn?'warn':'ok'}">${esc(d.remaining)}</strong></div>`);
  if(d.bottleBalances?.length){
   for(const b of d.bottleBalances){
-   const cls=b.balance>0?'warn':b.balance<0?'ok':'';
+   const cls=b.balance<0?'warn':b.balance>0?'ok':'';
    balanceRows.push(`<div class="bal-row"><span>Bottles · ${esc(b.name)}</span><strong class="${cls}">${fmtBal(b.balance)}</strong></div>`);
   }
  }else if(d.bottleLines?.length){
@@ -96,6 +97,7 @@ export function buildSaleReceiptHtml(d:SaleReceiptData,opts?:{autoPrint?:boolean
   .section{margin:10px 0 4px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#68776e}
   .tbl{width:100%;border-collapse:collapse;margin:0 0 8px;font-size:11px}
   .tbl th,.tbl td{border:1px solid #dfe7df;padding:5px 7px;text-align:left;vertical-align:top}
+  .muted{color:#728078;font-size:10px;font-weight:600}
   .tbl th{background:#eef6f1;color:#3d5c4f;font-size:9px;text-transform:uppercase;letter-spacing:.04em}
   .tbl.compact td,.tbl.compact th{padding:4px 6px}
   .sum{display:grid;grid-template-columns:1fr auto;gap:2px 12px;max-width:280px;margin-left:auto;font-size:11px;margin-bottom:8px}

@@ -41,7 +41,8 @@ export function friendlySaleError(message:string,status:number):string{
  if(m.includes('not enough stock')||m.includes('insufficient stock'))return message;
  if(m.includes('payment exceeds')||m.includes('split payments'))return 'Payment amounts do not match the sale total. Check Paid / Received fields.';
  if(m.includes('registered customer')||m.includes('guest')||m.includes('full payment'))return 'Walk-in sales need full payment. Choose a customer to allow credit or bottle returns.';
- if(m.includes('bottle return')||m.includes('outstanding balance'))return 'Bottle return is too high for this customer. Lower Return qty on the product row.';
+ if(m.includes('bottle type is not used'))return 'That bottle type cannot be returned here. Use a type linked to returnable products.';
+ if(m.includes('bottle return')||m.includes('outstanding balance'))return 'Could not record bottle return. Check bottle type and quantity.';
  if(m.includes('combine duplicate'))return 'Each product can only appear once. Use one row per product.';
  if(m.includes('discount exceeds'))return 'Discount is higher than the subtotal.';
  return message;

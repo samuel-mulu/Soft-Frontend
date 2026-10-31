@@ -20,14 +20,14 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
       }
       const cached = getUser();
       if (cached?.role && cached.role !== 'CUSTOMER') {
-        router.replace('/dashboard');
+        router.replace('/sales');
         return;
       }
       try {
         const me = await api('/auth/me');
         if (cancelled) return;
         if (me.role !== 'CUSTOMER') {
-          router.replace('/dashboard');
+          router.replace('/sales');
           return;
         }
         saveSession(getToken(), me);

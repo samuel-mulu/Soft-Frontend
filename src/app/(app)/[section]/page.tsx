@@ -1,14 +1,23 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import dynamic from 'next/dynamic';
-import { useParams } from 'next/navigation';
+const SECTIONS = new Set([
+  'dashboard',
+  'sell',
+  'sales',
+  'customers',
+  'products',
+  'inventory',
+  'bottles',
+  'payments',
+  'finance',
+  'reports',
+  'settings',
+]);
 
-const Workspace = dynamic(
-  () => import('@/components/workspace').then((mod) => ({ default: mod.Workspace })),
-  { ssr: false },
-);
-
-export default function Section() {
-  const params = useParams();
-  return <Workspace section={String(params.section)} />;
+export default async function LegacySectionPage({ params }: { params: Promise<{ section: string }> }) {
+  const { section } = await params;
+  if (SECTIONS.has(section)) {
+    redirect(`/${section}`);
+  }
+  redirect('/sell');
 }

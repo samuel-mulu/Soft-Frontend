@@ -6,6 +6,7 @@ import { api, saveSession } from '@/lib/api';
 import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { BRAND_MARK, BRAND_OWNER, getLogoPath } from '@/lib/brand';
+import { Button } from '@/components/ui/button';
 
 type Mode = 'customer' | 'staff';
 
@@ -49,7 +50,7 @@ export default function Login() {
         body: JSON.stringify({ username, password }),
       });
       saveSession(data.accessToken, data.user);
-      router.replace('/dashboard');
+      router.replace('/sell');
     } catch (e: any) {
       const msg = e.message || 'Sign in failed';
       toast.error(
@@ -107,9 +108,9 @@ export default function Login() {
                 placeholder="09xxxxxxxx"
               />
             </div>
-            <button type="submit" disabled={busy} className="btn btn-primary login-submit">
+            <Button type="submit" disabled={busy} className="login-submit w-full">
               {busy ? 'Checking…' : 'View balance & history'}
-            </button>
+            </Button>
           </form>
         ) : (
           <form onSubmit={submitStaff} className="login-form">
@@ -155,9 +156,9 @@ export default function Login() {
                 </button>
               </div>
             </div>
-            <button type="submit" disabled={busy} className="btn btn-primary login-submit">
+            <Button type="submit" disabled={busy} className="login-submit w-full">
               {busy ? 'Signing in…' : 'Continue'}
-            </button>
+            </Button>
           </form>
         )}
       </div>

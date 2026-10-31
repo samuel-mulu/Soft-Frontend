@@ -14,15 +14,16 @@ import {
   Settings,
   LogOut,
   ArrowUpRight,
-  Receipt,
   GlassWater,
   Menu,
-  X,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
 import { api, getToken, logout, saveSession } from '@/lib/api';
 import { SplashScreen } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { BRAND_MARK, BRAND_OWNER, getLogoPath } from '@/lib/brand';
 
 const SIDEBAR_KEY = 'fs_sidebar_collapsed';
@@ -30,7 +31,6 @@ const SIDEBAR_KEY = 'fs_sidebar_collapsed';
 const nav = [
   ['dashboard', 'Overview', LayoutDashboard],
   ['sell', 'New sale', ShoppingCart],
-  ['sales', 'Sales & invoices', Receipt],
   ['customers', 'Customers', Users],
   ['inventory', 'Empty bottles', Boxes],
   ['products', 'Products & stock', Package],
@@ -45,7 +45,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const [mobileMore, setMobileMore] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
@@ -99,22 +99,33 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   const filtered = nav.filter((x) => user.role === 'OWNER' || !['reports', 'settings'].includes(x[0]));
 
+  const navLinkClass = (id: string) =>
+    `sidebar-nav-link flex items-center gap-3 rounded-lg px-4 py-2.5 mb-0.5 font-semibold text-[13px] transition-colors ${
+      pathname === `/${id}` || pathname.startsWith(`/${id}/`)
+        ? 'bg-sidebar-accent text-sidebar-primary'
+        : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+    }`;
+
+  function closeMobileNav() {
+    setMobileNavOpen(false);
+  }
+
   return (
-    <div className="min-h-screen flex">
+    <div className="flex min-h-screen w-full max-w-[100vw] overflow-x-hidden">
       <aside
-        className={`desktop-sidebar w-[242px] shrink-0 bg-white border-r border-[#e5eae5] flex flex-col sticky top-0 h-screen ${
+        className={`desktop-sidebar w-[242px] shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col sticky top-0 h-screen ${
           sidebarCollapsed ? 'desktop-sidebar--collapsed' : ''
         }`}
       >
-        <div className="sidebar-brand p-6 flex items-center gap-3 text-xl font-extrabold min-h-[88px]">
-          <img src={getLogoPath()} alt="" className="w-10 h-10 rounded-xl shrink-0" />
+        <div className="sidebar-brand p-6 flex items-center gap-3 text-xl font-bold min-h-[88px] text-sidebar-foreground">
+          <img src={getLogoPath()} alt="" className="w-10 h-10 rounded-lg shrink-0" />
           <div className="sidebar-brand-text min-w-0 leading-tight">
-            <span className="block truncate">{BRAND_MARK}</span>
-            <span className="block truncate text-[11px] font-semibold text-[#728078]">{BRAND_OWNER}</span>
+            <span className="block truncate tracking-tight">{BRAND_MARK}</span>
+            <span className="block truncate text-[11px] font-semibold text-muted-foreground">{BRAND_OWNER}</span>
           </div>
         </div>
-        <div className="sidebar-section-label px-4 pb-3 text-[10px] tracking-[.15em] font-bold text-[#94a49a]">
-          WORKSPACE
+        <div className="sidebar-section-label px-4 pb-3 text-[10px] tracking-[0.12em] font-semibold text-muted-foreground uppercase">
+          Workspace
         </div>
         <nav className="px-3 flex-1 overflow-y-auto pb-6">
           {filtered.map(([id, label, Icon]) => (
@@ -122,35 +133,40 @@ export function Shell({ children }: { children: React.ReactNode }) {
               key={id}
               href={`/${id}`}
               title={sidebarCollapsed ? label : undefined}
-              className={`sidebar-nav-link flex items-center gap-3 rounded-xl px-4 py-3 mb-1 font-semibold text-[13px] ${
-                pathname === `/${id}` || pathname.startsWith(`/${id}/`)
-                  ? 'bg-[#e7f4ed] text-[#126a4c]'
-                  : 'text-[#68776e] hover:bg-[#f6f8f6]'
-              }`}
+              className={navLinkClass(id)}
             >
               <Icon size={18} className="shrink-0" />
               <span className="sidebar-link-label truncate">{label}</span>
             </Link>
           ))}
         </nav>
-        <div className="border-t border-[#e5eae5] p-4 sidebar-footer-user">
+        <div className="border-t border-sidebar-border p-4 sidebar-footer-user">
           <div className="sidebar-user-meta">
-            <div className="text-sm font-bold truncate">{user.username}</div>
+            <div className="text-sm font-semibold truncate">{user.username}</div>
             <div className="muted text-xs mt-1">{user.role === 'OWNER' ? 'Owner' : 'Cashier'}</div>
           </div>
           <button
             type="button"
             onClick={logout}
-            className="sidebar-signout mt-4 flex items-center gap-2 text-xs font-bold text-[#a45c50]"
+            className="sidebar-signout mt-4 flex items-center gap-2 text-xs font-semibold text-destructive/90 hover:text-destructive"
           >
             <LogOut size={15} /> <span className="sidebar-link-label">Sign out</span>
           </button>
         </div>
       </aside>
 
-      <div className="flex-1 min-w-0 page-shell">
-        <header className="bg-white border-b border-[#e5eae5] h-[70px] flex items-center justify-between px-5 md:px-9 gap-3">
+      <div className="flex-1 min-w-0 page-shell flex min-h-screen flex-col">
+        <header className="sticky top-0 z-40 flex h-[70px] shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-5 md:px-9 supports-[padding:max(0px)]:pt-[max(0px,env(safe-area-inset-top))]">
           <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              className="sidebar-toggle inline-flex lg:hidden"
+              onClick={() => setMobileNavOpen(true)}
+              aria-label="Open menu"
+              title="Menu"
+            >
+              <Menu size={20} />
+            </button>
             <button
               type="button"
               className="sidebar-toggle hidden lg:inline-flex"
@@ -160,21 +176,23 @@ export function Shell({ children }: { children: React.ReactNode }) {
             >
               {sidebarCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
             </button>
-            <div className="lg:hidden font-extrabold flex items-center gap-2 text-[#177554] min-w-0">
+            <div className="flex font-bold items-center gap-2 text-primary min-w-0 lg:hidden">
               <img src={getLogoPath()} alt="" className="w-8 h-8 rounded-lg shrink-0" />
               <span className="truncate">{BRAND_MARK}</span>
             </div>
-            <div className="hidden lg:block text-xs font-bold muted truncate">DISTRIBUTION WORKSPACE</div>
+            <div className="hidden lg:block text-xs font-semibold muted truncate tracking-wide">Distribution workspace</div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <span className="tag hidden sm:inline">{user.role === 'OWNER' ? 'Owner' : 'Cashier'}</span>
-            <span className="w-9 h-9 bg-[#e7f4ed] text-[#177554] rounded-full flex items-center justify-center font-bold">
+            <Badge variant="secondary" className="hidden sm:inline-flex">
+              {user.role === 'OWNER' ? 'Owner' : 'Cashier'}
+            </Badge>
+            <span className="w-9 h-9 bg-secondary text-primary rounded-full flex items-center justify-center font-semibold text-sm">
               {user.username?.slice(0, 1).toUpperCase()}
             </span>
           </div>
         </header>
         <main
-          className={`max-w-[1480px] mx-auto page-enter ${
+          className={`page-enter mx-auto w-full min-w-0 max-w-[1480px] overflow-x-hidden ${
             pathname === '/sell' ? 'px-2 py-2 md:px-4 md:py-3' : 'p-3 md:p-5'
           }`}
         >
@@ -182,61 +200,44 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      <nav className="mobile-nav fixed bottom-0 inset-x-0 bg-white border-t border-[#e5eae5] z-30 justify-around px-2 py-2 pb-[max(8px,env(safe-area-inset-bottom))]">
-        {(
-          [
-            ['dashboard', 'Home', LayoutDashboard],
-            ['sell', 'Sell', ShoppingCart],
-            ['customers', 'Customers', Users],
-            ['inventory', 'Stock', Boxes],
-            ['more', 'More', Menu],
-          ] as const
-        ).map(([id, label, Icon]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => (id === 'more' ? setMobileMore(true) : router.push('/' + id))}
-            className={`flex flex-col items-center gap-1 text-[10px] font-bold min-w-[55px] ${
-              pathname === '/' + id || pathname.startsWith('/' + id + '/') ? 'text-[#177554]' : 'text-[#85938a]'
-            }`}
-          >
-            <Icon size={21} />
-            {label}
-          </button>
-        ))}
-      </nav>
-
-      {mobileMore && (
-        <div className="fixed inset-0 z-50 bg-[#102b22]/50" onClick={() => setMobileMore(false)}>
-          <div
-            className="absolute bottom-0 inset-x-0 rounded-t-3xl bg-white p-5 max-h-[75vh] overflow-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between mb-4 font-bold">
-              All pages
-              <button type="button" onClick={() => setMobileMore(false)}>
-                <X />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {filtered.map(([id, label, Icon]) => (
-                <Link
-                  onClick={() => setMobileMore(false)}
-                  key={id}
-                  href={'/' + id}
-                  className="border border-[#e5eae5] rounded-xl p-3 flex gap-2 items-center text-xs font-semibold"
-                >
-                  <Icon size={17} />
-                  {label}
-                </Link>
-              ))}
-            </div>
-            <button type="button" className="btn btn-ghost w-full mt-4" onClick={logout}>
-              Sign out
-            </button>
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetContent side="left" className="flex h-full w-[min(100vw,280px)] gap-0 p-0 border-r border-sidebar-border bg-sidebar sm:max-w-[280px]">
+          <SheetHeader className="border-b border-sidebar-border px-5 py-4 text-left">
+            <SheetTitle className="flex items-center gap-3 text-base font-bold text-sidebar-foreground">
+              <img src={getLogoPath()} alt="" className="h-9 w-9 rounded-lg shrink-0" />
+              <span className="truncate">{BRAND_MARK}</span>
+            </SheetTitle>
+            <p className="text-[11px] font-semibold text-muted-foreground">{BRAND_OWNER}</p>
+          </SheetHeader>
+          <div className="px-3 pt-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Workspace
           </div>
-        </div>
-      )}
+          <nav className="flex-1 overflow-y-auto px-3 py-2">
+            {filtered.map(([id, label, Icon]) => (
+              <Link key={id} href={`/${id}`} onClick={closeMobileNav} className={navLinkClass(id)}>
+                <Icon size={18} className="shrink-0" />
+                <span className="truncate">{label}</span>
+              </Link>
+            ))}
+          </nav>
+          <div className="mt-auto border-t border-sidebar-border p-4">
+            <div className="text-sm font-semibold truncate">{user.username}</div>
+            <div className="muted text-xs mt-1">{user.role === 'OWNER' ? 'Owner' : 'Cashier'}</div>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-4 w-full"
+              onClick={() => {
+                closeMobileNav();
+                logout();
+              }}
+            >
+              <LogOut size={15} className="mr-2" />
+              Sign out
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

@@ -7,8 +7,8 @@ export default function NotFound() {
         <p className="text-[11px] uppercase tracking-[0.18em] font-bold text-[#177554] mb-2">404</p>
         <h1 className="text-2xl font-extrabold tracking-tight">Page not found</h1>
         <p className="muted mt-3 mb-6">This link does not exist in your workspace.</p>
-        <Link href="/dashboard" className="btn btn-primary inline-flex">
-          Go to dashboard
+        <Link href="/sell" className="btn btn-primary inline-flex">
+          Go to new sale
         </Link>
       </div>
     </main>
