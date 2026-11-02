@@ -1,3 +1,3 @@
 'use client';
 
-export { InventoryPage } from '@/components/workspace';
+export { BottleWarehouseList as InventoryPage } from './bottle-warehouse-list';

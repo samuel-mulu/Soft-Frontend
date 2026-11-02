@@ -40,7 +40,13 @@ import {
   type SaleLine,
 } from '@/lib/sale-line-quantity';
 import { ChevronDown, Download, GlassWater, Plus, Printer, X } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import {
+  useProducts,
+  useCustomers,
+  useBottleTypes,
+  useInventoryBalances,
+  useCustomerBottles,
+} from '@/hooks/queries';
 
 type R = Record<string, unknown>;
 const n = (v: unknown) => Number(v || 0);
@@ -100,24 +106,17 @@ function CustomerSelect({
 
 export function SaleForm() {
   const client = useQueryClient();
-  const { data: products = [] } = useQuery({ queryKey: ['/products'], queryFn: () => api<R[]>('/products') });
-  const { data: customers = [] } = useQuery({ queryKey: ['/customers'], queryFn: () => api<R[]>('/customers') });
-  const { data: bottles = [] } = useQuery({ queryKey: ['/bottle-types'], queryFn: () => api<R[]>('/bottle-types') });
-  const { data: balances = [] } = useQuery({
-    queryKey: ['/inventory/balances'],
-    queryFn: () => api<R[]>('/inventory/balances'),
-  });
+  const { data: products = [] } = useProducts();
+  const { data: customers = [] } = useCustomers();
+  const { data: bottles = [] } = useBottleTypes();
+  const { data: balances = [] } = useInventoryBalances();
 
   const [saving, setSaving] = useState(false);
   const [saleError, setSaleError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<SaleFieldErrors>(EMPTY_SALE_FIELDS);
   const [customerId, setCustomerId] = useState('');
   const [accountOpen, setAccountOpen] = useState(false);
-  const { data: customerLedger } = useQuery({
-    queryKey: [`/customer-bottles/${customerId}`],
-    queryFn: () => api<R>(`/customer-bottles/${customerId}`),
-    enabled: !!customerId,
-  });
+  const { data: customerLedger } = useCustomerBottles(customerId || undefined, !!customerId);
   const [guestName, setGuestName] = useState('');
   const [items, setItems] = useState<SaleLine[]>([emptySaleLine()]);
   const [discount, setDiscount] = useState('0');

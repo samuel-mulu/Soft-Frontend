@@ -6,6 +6,7 @@ const SECTIONS = new Set([
   'sales',
   'customers',
   'products',
+  'warehouse',
   'inventory',
   'bottles',
   'payments',

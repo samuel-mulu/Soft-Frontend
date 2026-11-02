@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, saveSession } from '@/lib/api';
+import { clearQueryCacheOnLogout } from '@/lib/query-client';
 import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { BRAND_MARK, BRAND_OWNER, getLogoPath } from '@/lib/brand';
@@ -27,6 +28,7 @@ export default function Login() {
         method: 'POST',
         body: JSON.stringify({ phone }),
       });
+      clearQueryCacheOnLogout();
       saveSession(data.accessToken, data.user);
       router.replace('/portal');
     } catch (e: any) {
@@ -49,6 +51,7 @@ export default function Login() {
         method: 'POST',
         body: JSON.stringify({ username, password }),
       });
+      clearQueryCacheOnLogout();
       saveSession(data.accessToken, data.user);
       router.replace('/sell');
     } catch (e: any) {

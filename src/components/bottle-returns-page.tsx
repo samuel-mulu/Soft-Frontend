@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCustomers, useBottleTypes, useCustomerBottles } from '@/hooks/queries';
 import { api, post } from '@/lib/api';
 import { QuantityEntry } from '@/components/quantity-entry';
 import { BottleBalance, BottleBalanceList } from '@/components/balance-display';
@@ -137,14 +138,8 @@ function date(v: unknown) {
 
 export function BottleReturnsPage() {
   const client = useQueryClient();
-  const { data: customers = [] } = useQuery({
-    queryKey: ['/customers'],
-    queryFn: () => api<R[]>('/customers'),
-  });
-  const { data: bottles = [] } = useQuery({
-    queryKey: ['/bottle-types'],
-    queryFn: () => api<R[]>('/bottle-types'),
-  });
+  const { data: customers = [] } = useCustomers();
+  const { data: bottles = [] } = useBottleTypes();
 
   const [customerId, setCustomerId] = useState('');
   const [bottleTypeId, setBottleTypeId] = useState('');
@@ -154,11 +149,7 @@ export function BottleReturnsPage() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const { data: ledger } = useQuery({
-    queryKey: [`/customer-bottles/${customerId}`],
-    queryFn: () => api<R>(`/customer-bottles/${customerId}`),
-    enabled: !!customerId,
-  });
+  const { data: ledger } = useCustomerBottles(customerId || undefined, !!customerId);
 
   const bottleName = (id: string): string =>
     String(bottles.find((b: R) => b.id === id)?.name || 'Bottle');

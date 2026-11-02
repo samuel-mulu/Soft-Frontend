@@ -9,6 +9,7 @@ import {
   Users,
   Boxes,
   Package,
+  PackageCheck,
   Wallet,
   ChartNoAxesCombined,
   Settings,
@@ -19,7 +20,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { api, getToken, logout, saveSession } from '@/lib/api';
+import { prefetchNavRoute } from '@/hooks/queries';
 import { SplashScreen } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,7 +35,8 @@ const nav = [
   ['dashboard', 'Overview', LayoutDashboard],
   ['sell', 'New sale', ShoppingCart],
   ['customers', 'Customers', Users],
-  ['inventory', 'Empty bottles', Boxes],
+  ['warehouse', 'Stock warehouse', PackageCheck],
+  ['inventory', 'Bottle warehouse', Boxes],
   ['products', 'Products & stock', Package],
   ['bottles', 'Bottle returns', GlassWater],
   ['payments', 'Payments', Wallet],
@@ -44,6 +48,7 @@ const nav = [
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<any>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -110,6 +115,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
     setMobileNavOpen(false);
   }
 
+  function prefetchSection(section: string) {
+    void prefetchNavRoute(queryClient, section);
+  }
+
   return (
     <div className="flex min-h-screen w-full max-w-[100vw] overflow-x-hidden">
       <aside
@@ -134,6 +143,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
               href={`/${id}`}
               title={sidebarCollapsed ? label : undefined}
               className={navLinkClass(id)}
+              onMouseEnter={() => prefetchSection(id)}
+              onFocus={() => prefetchSection(id)}
             >
               <Icon size={18} className="shrink-0" />
               <span className="sidebar-link-label truncate">{label}</span>
@@ -214,7 +225,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
           <nav className="flex-1 overflow-y-auto px-3 py-2">
             {filtered.map(([id, label, Icon]) => (
-              <Link key={id} href={`/${id}`} onClick={closeMobileNav} className={navLinkClass(id)}>
+              <Link
+                key={id}
+                href={`/${id}`}
+                onClick={closeMobileNav}
+                onMouseEnter={() => prefetchSection(id)}
+                onFocus={() => prefetchSection(id)}
+                className={navLinkClass(id)}
+              >
                 <Icon size={18} className="shrink-0" />
                 <span className="truncate">{label}</span>
               </Link>

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { post, patch } from '@/lib/api';
-import { invalidateBalanceQueries } from '@/lib/query-keys';
+import { invalidateAfterExpense, invalidateBalanceQueries } from '@/lib/query-keys';
 import { toast } from 'sonner';
 
 type RecordPayload = Record<string, unknown>;
@@ -23,7 +23,8 @@ export function useMutationWithInvalidation() {
     try {
       const result = method === 'POST' ? await post(path, payload) : await patch(path, payload);
       toast.success('Saved successfully');
-      await invalidateBalanceQueries(client, customerId);
+      if (path.startsWith('/expenses')) await invalidateAfterExpense(client);
+      else await invalidateBalanceQueries(client, customerId);
       reset?.();
       return result;
     } catch (e: unknown) {
