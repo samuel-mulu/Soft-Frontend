@@ -3,6 +3,7 @@ import {
   bottleLedgerTotals,
   formatDisplayBottle,
   formatDisplayMoney,
+  presentCustomerBalance,
   projectDisplayBottle,
   projectDisplayMoney,
   toDisplayBottle,
@@ -34,6 +35,55 @@ describe('customer-balance display', () => {
   it('matches backend sign convention', () => {
     expect(toDisplayMoney(100)).toBe(-100);
     expect(toDisplayBottle(8)).toBe(-8);
+  });
+
+  it('shows the same money sign to staff and customer', () => {
+    const debt = presentCustomerBalance(1000, 'money', 'staff');
+    const debtPortal = presentCustomerBalance(1000, 'money', 'customer');
+    expect(debt.display).toBe(-1000);
+    expect(debtPortal.display).toBe(debt.display);
+    expect(debt.tone).toBe('danger');
+    expect(debtPortal.tone).toBe('danger');
+    expect(debt.label).toMatch(/Customer owes/);
+    expect(debtPortal.label).toMatch(/You need to pay/);
+
+    const credit = presentCustomerBalance(-1000, 'money', 'staff');
+    const creditPortal = presentCustomerBalance(-1000, 'money', 'customer');
+    expect(credit.display).toBe(1000);
+    expect(creditPortal.display).toBe(credit.display);
+    expect(credit.tone).toBe('success');
+    expect(credit.label).toMatch(/credit/);
+    expect(creditPortal.label).toMatch(/You have/);
+  });
+
+  it('tracks payments from debt through overpayment without a second flip', () => {
+    expect(presentCustomerBalance(1000, 'money').display).toBe(-1000);
+    expect(presentCustomerBalance(600, 'money').display).toBe(-600);
+    expect(presentCustomerBalance(0, 'money').display).toBe(0);
+    expect(presentCustomerBalance(0, 'money').tone).toBe('neutral');
+    expect(presentCustomerBalance(-200, 'money').display).toBe(200);
+    expect(presentCustomerBalance(-200, 'money').tone).toBe('success');
+  });
+
+  it('tracks bottle issue, return, settle, and over-return', () => {
+    expect(presentCustomerBalance(100, 'bottle').display).toBe(-100);
+    expect(presentCustomerBalance(40, 'bottle').display).toBe(-40);
+    expect(presentCustomerBalance(0, 'bottle').display).toBe(0);
+    expect(presentCustomerBalance(-20, 'bottle').display).toBe(20);
+    expect(presentCustomerBalance(-20, 'bottle', 'customer').label).toMatch(/bottles credit/);
+    expect(presentCustomerBalance(100, 'bottle', 'staff').label).toMatch(/Customer owes 100/);
+  });
+
+  it('compensation clears bottles and adds money debt once', () => {
+    const bottlesBefore = presentCustomerBalance(100, 'bottle');
+    const bottlesAfter = presentCustomerBalance(0, 'bottle');
+    const moneyBefore = presentCustomerBalance(0, 'money');
+    const moneyAfter = presentCustomerBalance(1000, 'money');
+    expect(bottlesBefore.display).toBe(-100);
+    expect(bottlesAfter.display).toBe(0);
+    expect(moneyBefore.display).toBe(0);
+    expect(moneyAfter.display).toBe(-1000);
+    expect(toDisplayMoney(toDisplayMoney(1000))).not.toBe(-1000);
   });
 
   it('splits bottle ledger into with-customer vs from-customer', () => {

@@ -4,6 +4,8 @@ export type ReportFilters = {
   from: string;
   to: string;
   payMethod: 'all' | 'CASH' | 'BANK' | 'MOBILE';
+  /** Empty or omitted means every cashier. A staff id limits the report to that person. */
+  cashierId?: string;
 };
 
 export const queryKeys = {
@@ -44,9 +46,9 @@ export const queryKeys = {
     summaryRoot: () => ['reports', 'summary'] as const,
     activityRoot: () => ['reports', 'activity'] as const,
     summary: (filters: ReportFilters) =>
-      ['reports', 'summary', filters.from, filters.to, filters.payMethod] as const,
+      ['reports', 'summary', filters.from, filters.to, filters.payMethod, filters.cashierId || 'all'] as const,
     activity: (filters: ReportFilters) =>
-      ['reports', 'activity', filters.from, filters.to, filters.payMethod] as const,
+      ['reports', 'activity', filters.from, filters.to, filters.payMethod, filters.cashierId || 'all'] as const,
     dashboardSummary: () => ['/reports/summary'] as const,
   },
   portal: {

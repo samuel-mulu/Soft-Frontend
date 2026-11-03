@@ -8,6 +8,7 @@ import { money, date } from '@/lib/api';
 import { LoadError, SkeletonStatGrid, SkeletonTable } from '@/components/ui/skeleton';
 import { BottleDisplayToggle } from '@/components/bottle-display-mode';
 import { BottleBalance } from '@/components/balance-display';
+import { presentCustomerBalance } from '@/lib/customer-balance';
 import { Button } from '@/components/ui/button';
 import { CustomerMoneySummary } from '@/features/customers/components/customer-money-summary';
 import { BottleCompensationDialog } from '@/features/customers/components/bottle-compensation-dialog';
@@ -115,7 +116,13 @@ export function CustomerHistoryPage({
   const { data: bottlesFromApi = [] } = useBottleTypes(!portal);
 
   const historyR = history as R | undefined;
-  const bottles = (portal ? historyR?.bottleTypes : bottlesFromApi) as R[];
+  const bottles = useMemo((): R[] => {
+    if (portal) {
+      const fromHistory = historyR?.bottleTypes;
+      return Array.isArray(fromHistory) ? fromHistory : [];
+    }
+    return Array.isArray(bottlesFromApi) ? bottlesFromApi : [];
+  }, [portal, historyR?.bottleTypes, bottlesFromApi]);
   const bottleName = (id: string) => String(bottles.find((b) => b.id === id)?.name || 'Bottle');
   const customer = historyR?.customer as R | undefined;
 
@@ -131,7 +138,9 @@ export function CustomerHistoryPage({
     return n(row?.outstanding);
   }, [bottleTotals, activeBottleTypeId]);
 
-  const activeBottleType = bottles.find((b) => String(b.id) === activeBottleTypeId);
+  const activeBottleType = activeBottleTypeId
+    ? bottles.find((b) => String(b.id) === activeBottleTypeId)
+    : undefined;
   const unifiedHistory = useMemo(
     () => buildUnifiedHistory(historyR, bottleName),
     [historyR, bottles],
@@ -192,7 +201,7 @@ export function CustomerHistoryPage({
                   <thead>
                     <tr>
                       <th>Bottle type</th>
-                      <th>Owed</th>
+                      <th>Balance</th>
                       <th>Replacement</th>
                       <th>Est. value</th>
                       {staff && <th>Actions</th>}
@@ -202,7 +211,6 @@ export function CustomerHistoryPage({
                     {bottleTotals.map((row) => {
                       const bt = bottles.find((b) => String(b.id) === row.bottleTypeId);
                       const owed = Math.max(0, n(row.outstanding));
-                      const surplus = n(row.outstanding) < -0.001 ? -n(row.outstanding) : 0;
                       const price = n(bt?.replacementPrice);
                       const est = owed > 0 && price > 0 ? owed * price : 0;
                       return (
@@ -214,13 +222,10 @@ export function CustomerHistoryPage({
                             ) : null}
                           </td>
                           <td>
-                            {owed > 0 ? (
-                              <span className="font-bold text-[#a8662b] tabular-nums">{owed} owed</span>
-                            ) : surplus > 0 ? (
-                              <span className="font-bold text-[#15803D] tabular-nums">{surplus} surplus</span>
-                            ) : (
-                              <span className="muted">Settled</span>
-                            )}
+                            <BottleBalance internal={n(row.outstanding)} size="sm" />
+                            <span className="block text-[10px] font-semibold text-muted-foreground">
+                              {presentCustomerBalance(n(row.outstanding), 'bottle', 'staff').label}
+                            </span>
                           </td>
                           <td className="tabular-nums">{price > 0 ? money(price) : '—'}</td>
                           <td className="tabular-nums">{est > 0 ? money(est) : '—'}</td>

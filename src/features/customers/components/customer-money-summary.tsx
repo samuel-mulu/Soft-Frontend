@@ -1,7 +1,6 @@
 'use client';
 
-import { money } from '@/lib/api';
-import { toDisplayMoney, balanceTone } from '@/lib/customer-balance';
+import { presentCustomerBalance } from '@/lib/customer-balance';
 
 type MoneyBreakdown = {
   drinkOutstanding?: unknown;
@@ -11,15 +10,11 @@ type MoneyBreakdown = {
 
 const n = (v: unknown) => Number(v || 0);
 
-function humanMoneyOwed(internalOutstanding: number, portal?: boolean): string {
-  const display = toDisplayMoney(internalOutstanding);
-  if (Math.abs(display) < 0.001) return 'Account settled — no balance owed';
-  if (display < 0) {
-    const amt = money(Math.abs(display));
-    return portal ? `You owe ${amt}` : `Customer owes ${amt}`;
-  }
-  return portal ? `Your credit ${money(display)}` : `Customer credit ${money(display)}`;
-}
+const toneCls = {
+  danger: 'text-[#DC2626]',
+  success: 'text-[#15803D]',
+  neutral: 'text-[#64748B]',
+} as const;
 
 export function CustomerMoneySummary({
   moneyOutstanding,
@@ -32,42 +27,35 @@ export function CustomerMoneySummary({
   compact?: boolean;
   portal?: boolean;
 }) {
-  const internal = n(moneyOutstanding);
-  const display = toDisplayMoney(internal);
-  const tone = balanceTone(display);
-  const toneCls =
-    tone === 'danger' ? 'text-[#DC2626]' : tone === 'success' ? 'text-[#15803D]' : 'text-primary';
-
-  const drink = n(moneyBreakdown?.drinkOutstanding);
-  const comp = n(moneyBreakdown?.compensationOutstanding);
-  const credit = n(moneyBreakdown?.customerCredit);
+  const viewer = portal ? 'customer' : 'staff';
+  const net = presentCustomerBalance(n(moneyOutstanding), 'money', viewer);
+  const drink = presentCustomerBalance(n(moneyBreakdown?.drinkOutstanding), 'money', viewer);
+  const comp = presentCustomerBalance(n(moneyBreakdown?.compensationOutstanding), 'money', viewer);
+  const creditInternal = n(moneyBreakdown?.customerCredit);
 
   return (
     <section className="rounded-xl border border-border bg-card p-4 md:p-5">
       <p className="label mb-1">Money balance</p>
-      <p className={`text-xl md:text-2xl font-extrabold tabular-nums ${toneCls}`}>
-        {humanMoneyOwed(internal, portal)}
-      </p>
+      <p className={`text-2xl md:text-3xl font-extrabold tabular-nums ${toneCls[net.tone]}`}>{net.formatted}</p>
+      <p className={`text-sm font-semibold mt-1 ${toneCls[net.tone]}`}>{net.label}</p>
       {!compact && (
         <ul className="mt-4 space-y-2 text-sm">
-          <li className="flex justify-between gap-3">
-            <span className="muted">Drink sales outstanding</span>
-            <span className="font-bold tabular-nums">{drink > 0.001 ? money(drink) : '—'}</span>
+          <li className="flex justify-between gap-3 items-center">
+            <span className="muted">Drink purchases</span>
+            <span className={`font-bold tabular-nums ${toneCls[drink.tone]}`}>{drink.formatted}</span>
           </li>
-          <li className="flex justify-between gap-3">
-            <span className="muted">Bottle compensation outstanding</span>
-            <span className="font-bold tabular-nums">{comp > 0.001 ? money(comp) : '—'}</span>
+          <li className="flex justify-between gap-3 items-center">
+            <span className="muted">Bottle compensation</span>
+            <span className={`font-bold tabular-nums ${toneCls[comp.tone]}`}>{comp.formatted}</span>
           </li>
-          {credit > 0.001 && (
+          {creditInternal > 0.001 && (
             <li className="flex justify-between gap-3">
-              <span className="muted">Available customer credit</span>
-              <span className="font-bold tabular-nums text-[#15803D]">{money(credit)}</span>
+              <span className="muted">Available credit</span>
+              <span className="font-bold tabular-nums text-[#15803D]">
+                {presentCustomerBalance(-creditInternal, 'money', viewer).formatted}
+              </span>
             </li>
           )}
-          <li className="flex justify-between gap-3 border-t border-border pt-2">
-            <span className="font-semibold">Total owed (drinks + compensation)</span>
-            <span className="font-extrabold tabular-nums">{money(Math.max(0, drink + comp))}</span>
-          </li>
         </ul>
       )}
     </section>

@@ -1,7 +1,7 @@
 'use client';
 
-import { CustomerHistoryPage } from '@/components/workspace';
+import { CustomerPortalAccount } from '@/features/portal/components/customer-portal-account';
 
 export default function CustomerPortalPage() {
-  return <CustomerHistoryPage portal />;
+  return <CustomerPortalAccount />;
 }

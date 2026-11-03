@@ -72,7 +72,9 @@ export function MoneyBalance({
       display={display}
       formatted={formatDisplayMoney(display)}
       size={size}
-      title={display < 0 ? 'Customer owes money' : display > 0 ? 'Customer credit' : 'Settled'}
+      title={
+        display < 0 ? 'Customer owes' : display > 0 ? 'Customer credit' : 'Settled'
+      }
     />
   );
 }
@@ -101,7 +103,7 @@ export function BottleBalance({
       formatted={formatted}
       size={size}
       title={
-        display < 0 ? 'Bottles held by customer' : display > 0 ? 'Extra bottles returned' : 'Settled'
+        display < 0 ? 'Customer owes bottles' : display > 0 ? 'Customer bottle credit' : 'Settled'
       }
     />
   );

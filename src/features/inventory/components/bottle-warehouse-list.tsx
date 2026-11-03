@@ -9,6 +9,7 @@ import { useEmptyBottleSummary } from '@/hooks/queries';
 import { SubtleRefreshIndicator } from '@/components/shared/subtle-refresh-indicator';
 import { getUser, post } from '@/lib/api';
 import { invalidateBalanceQueries, queryKeys } from '@/lib/query-keys';
+import { presentCustomerBalance } from '@/lib/customer-balance';
 import { QueryRefreshButton } from '@/components/shared/query-refresh-button';
 import { LoadErrorBanner } from '@/components/shared/load-error';
 import { DataLoadSkeleton } from '@/components/ui/skeleton';
@@ -55,11 +56,10 @@ function StatCard({
 }
 
 function withCustomersCell(obligations: number) {
-  const q = n(obligations);
-  if (q > 0) {
-    return <span className="font-extrabold text-[#a8662b] tabular-nums">+{q}</span>;
-  }
-  return <span className="font-extrabold muted tabular-nums">{q}</span>;
+  const presented = presentCustomerBalance(n(obligations), 'bottle', 'staff');
+  const color =
+    presented.tone === 'danger' ? 'text-[#DC2626]' : presented.tone === 'success' ? 'text-[#15803D]' : 'text-muted-foreground';
+  return <span className={`font-extrabold tabular-nums ${color}`}>{presented.formatted}</span>;
 }
 
 export function BottleWarehouseList() {
@@ -135,9 +135,16 @@ export function BottleWarehouseList() {
             />
             <StatCard
               label="With customers"
-              value={String(withCustomersTotal)}
+              value={presentCustomerBalance(withCustomersTotal, 'bottle', 'staff').formatted}
               icon={Users}
-              small="From sales & returns (ledger)"
+              small="Customer bottle balance (net)"
+              valueClassName={
+                presentCustomerBalance(withCustomersTotal, 'bottle', 'staff').tone === 'danger'
+                  ? 'text-[#DC2626]'
+                  : presentCustomerBalance(withCustomersTotal, 'bottle', 'staff').tone === 'success'
+                    ? 'text-[#15803D]'
+                    : undefined
+              }
             />
             <StatCard
               label="Damaged"

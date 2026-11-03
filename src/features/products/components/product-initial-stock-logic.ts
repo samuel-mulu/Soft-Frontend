@@ -108,9 +108,16 @@ export function validateInitialStock(
   fields: InitialStockFields,
   returnable: boolean,
   availableEmpty: number,
+  options?: { allowZero?: boolean },
 ): string | null {
   const q = computeInitialStockQuantities(fields, returnable);
-  if (q.error) return q.error;
+  if (q.error) {
+    const zeroQty =
+      q.error === 'Quantity must be greater than zero' ||
+      q.error === 'Enter at least one mixed quantity';
+    if (options?.allowZero && zeroQty) return null;
+    return q.error;
+  }
   if (!fields.enableInitialStock || q.totalFull === 0) return null;
   if (returnable && q.fromExisting > availableEmpty) {
     return `Not enough empty bottles in warehouse (${availableEmpty} available, ${q.fromExisting} requested)`;

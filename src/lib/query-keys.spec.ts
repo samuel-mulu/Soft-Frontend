@@ -15,13 +15,15 @@ describe('queryKeys', () => {
       '2026-01-01',
       '2026-01-31',
       'CASH',
+      'all',
     ]);
-    expect(queryKeys.reports.activity(filters)).toEqual([
+    expect(queryKeys.reports.activity({ ...filters, cashierId: 'cashier-1' })).toEqual([
       'reports',
       'activity',
       '2026-01-01',
       '2026-01-31',
       'CASH',
+      'cashier-1',
     ]);
   });
 

@@ -8,7 +8,8 @@ import { useApiQuery } from '@/hooks/use-api-query';
 
 function reportApiQuery(filters: ReportFilters) {
   const methodParam = filters.payMethod === 'all' ? '' : `&method=${filters.payMethod}`;
-  return `?from=${filters.from}&to=${filters.to}${methodParam}`;
+  const cashierParam = filters.cashierId ? `&cashierId=${encodeURIComponent(filters.cashierId)}` : '';
+  return `?from=${filters.from}&to=${filters.to}${methodParam}${cashierParam}`;
 }
 
 export function useCustomers(enabled = true) {

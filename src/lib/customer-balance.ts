@@ -64,12 +64,91 @@ export function formatDisplayBottleDozenEach(display: number, suffix = ''): stri
 
 export function moneyLabel(display: number): string {
   if (Math.abs(display) < 0.001) return 'Settled';
-  return display < 0 ? 'Owes you' : 'Credit (prepaid)';
+  return display < 0 ? 'Customer owes' : 'Customer credit';
 }
 
 export function bottleLabel(display: number): string {
   if (Math.abs(display) < 0.001) return 'Settled';
-  return display < 0 ? 'With customer' : 'Over-returned';
+  return display < 0 ? 'Customer owes bottles' : 'Customer bottle credit';
+}
+
+export type BalanceViewer = 'staff' | 'customer';
+
+export type PresentedBalance = {
+  /** Customer-perspective amount. Negative = owes, positive = credit. */
+  display: number;
+  tone: BalanceTone;
+  formatted: string;
+  /** Wording changes by viewer; the sign does not. */
+  label: string;
+};
+
+function absMoney(display: number): string {
+  return formatDisplayMoney(Math.abs(display)).replace(/^[−+]/, '');
+}
+
+function absBottles(display: number): string {
+  return String(Math.round(Math.abs(display)));
+}
+
+/**
+ * Single presentation of an INTERNAL ledger value.
+ * Money internal: sales + compensation − payments (>0 customer owes).
+ * Bottle internal: sum of deltas (>0 bottles still with customer).
+ * Converted exactly once. Viewer only changes the sentence, never the sign.
+ */
+export function presentCustomerBalance(
+  internal: number,
+  kind: 'money' | 'bottle',
+  viewer: BalanceViewer = 'staff',
+): PresentedBalance {
+  const display = kind === 'money' ? toDisplayMoney(internal) : toDisplayBottle(internal);
+  const tone = balanceTone(display);
+  const formatted = kind === 'money' ? formatDisplayMoney(display) : formatDisplayBottle(display);
+
+  if (Math.abs(display) < 0.001) {
+    return { display: 0, tone, formatted, label: 'Settled' };
+  }
+
+  if (kind === 'money') {
+    const amt = absMoney(display);
+    if (display < 0) {
+      return {
+        display,
+        tone,
+        formatted,
+        label: viewer === 'customer' ? `You need to pay ${amt}` : `Customer owes ${amt}`,
+      };
+    }
+    return {
+      display,
+      tone,
+      formatted,
+      label: viewer === 'customer' ? `You have ${amt} credit` : `Customer has ${amt} credit`,
+    };
+  }
+
+  const qty = absBottles(display);
+  if (display < 0) {
+    return {
+      display,
+      tone,
+      formatted,
+      label:
+        viewer === 'customer'
+          ? `You need to return ${qty} bottles`
+          : `Customer owes ${qty} bottles`,
+    };
+  }
+  return {
+    display,
+    tone,
+    formatted,
+    label:
+      viewer === 'customer'
+        ? `You have ${qty} bottles credit`
+        : `Customer has ${qty} bottles credit`,
+  };
 }
 
 /** Project account money after a sale (internal before + saleTotal - payment). */

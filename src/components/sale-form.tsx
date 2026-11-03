@@ -19,7 +19,7 @@ import {
   type SaleReceiptData,
 } from '@/lib/sale-receipt';
 import { getBusinessName } from '@/lib/brand';
-import { toDisplayBottle } from '@/lib/customer-balance';
+import { presentCustomerBalance, toDisplayBottle } from '@/lib/customer-balance';
 import { formatEachBreakdown } from '@/lib/pack-quantity';
 import { CustomerBalanceSummary } from '@/components/balance-display';
 import { SaleItemCard } from '@/features/sales/components/sale-item-card';
@@ -198,10 +198,7 @@ export function SaleForm() {
   const accountPanelSummary = () => {
     if (!customerId) return 'Full payment required';
     const bits: string[] = [];
-    const owed = customerMoneyOwed();
-    if (owed > 0.001) bits.push(`Owes ${money(owed)}`);
-    else if (owed < -0.001) bits.push('Credit on account');
-    else bits.push('Paid up');
+    bits.push(presentCustomerBalance(customerMoneyOwed(), 'money', 'staff').label);
     const held = [...customerBottleHeld()].filter(([, q]) => q !== 0);
     if (held.length) bits.push(`${held.length} bottle type${held.length === 1 ? '' : 's'} out`);
     return bits.join(' · ');

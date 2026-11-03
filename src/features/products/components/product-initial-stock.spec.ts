@@ -57,6 +57,18 @@ describe('product initial stock', () => {
     expect(payload.initialQuantity).toBe(2000);
   });
 
+  it('allows a blank edit quantity so product details can save without a receive', () => {
+    const f = {
+      ...defaultInitialStockFields(),
+      enableInitialStock: true,
+      receiveMode: 'WITH_BOTTLES' as const,
+      qtyMode: 'each' as const,
+      each: '',
+    };
+    expect(validateInitialStock(f, true, 0, { allowZero: true })).toBeNull();
+    expect(buildProductCreateStockPayload(f, true)).toEqual({});
+  });
+
   it('validates insufficient empties', () => {
     const f = {
       ...defaultInitialStockFields(),

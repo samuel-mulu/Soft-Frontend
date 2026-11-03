@@ -102,7 +102,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     return <SplashScreen message="Signing you in…" />;
   }
 
-  const filtered = nav.filter((x) => user.role === 'OWNER' || !['reports', 'settings'].includes(x[0]));
+  const filtered = nav.filter((x) => user.role === 'OWNER' || x[0] !== 'settings');
 
   const navLinkClass = (id: string) =>
     `sidebar-nav-link flex items-center gap-3 rounded-lg px-4 py-2.5 mb-0.5 font-semibold text-[13px] transition-colors ${

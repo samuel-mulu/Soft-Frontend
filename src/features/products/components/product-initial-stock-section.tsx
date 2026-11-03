@@ -27,6 +27,7 @@ export function ProductInitialStockSection({
   onChange,
   suppliers,
   owner,
+  purpose = 'create',
 }: {
   returnable: boolean;
   availableEmpty: number;
@@ -34,33 +35,46 @@ export function ProductInitialStockSection({
   onChange: (patch: Partial<InitialStockFields>) => void;
   suppliers: Supplier[];
   owner: boolean;
+  /** Edit always shows the three receive modes. Blank quantity leaves stock unchanged. */
+  purpose?: 'create' | 'edit';
 }) {
-  const q = computeInitialStockQuantities(fields, returnable);
+  const enabled = purpose === 'edit' || fields.enableInitialStock;
+  const activeFields = enabled ? { ...fields, enableInitialStock: true } : fields;
+  const q = computeInitialStockQuantities(activeFields, returnable);
   const projectedEmpty = availableEmpty - q.fromExisting;
   const showSupplier =
     returnable &&
-    fields.enableInitialStock &&
+    enabled &&
     (fields.receiveMode === 'WITH_BOTTLES' || fields.receiveMode === 'MIXED_SOURCE');
 
   return (
     <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4">
-      <label className="flex items-center gap-2 text-sm font-semibold">
-        <input
-          type="checkbox"
-          checked={fields.enableInitialStock}
-          onChange={(e) => onChange({ enableInitialStock: e.target.checked })}
-        />
-        Add initial full stock when creating product
-      </label>
+      {purpose === 'create' ? (
+        <label className="flex items-center gap-2 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={fields.enableInitialStock}
+            onChange={(e) => onChange({ enableInitialStock: e.target.checked })}
+          />
+          Add initial full stock when creating product
+        </label>
+      ) : (
+        <div className="space-y-1">
+          <p className="text-sm font-semibold">Add stock</p>
+          <p className="text-xs text-muted-foreground">
+            Leave the quantity at 0 to keep stock unchanged.
+          </p>
+        </div>
+      )}
 
-      {!fields.enableInitialStock && (
+      {purpose === 'create' && !fields.enableInitialStock && (
         <p className="text-xs text-muted-foreground">
           Leave unchecked to create the product with zero stock. Receive later from{' '}
           <span className="font-semibold text-foreground">Inventory → Bottle warehouse</span>.
         </p>
       )}
 
-      {fields.enableInitialStock && !returnable && (
+      {enabled && !returnable && (
         <div>
           <p className="label mb-2">Starting stock (units)</p>
           <input
@@ -74,7 +88,7 @@ export function ProductInitialStockSection({
         </div>
       )}
 
-      {fields.enableInitialStock && returnable && (
+      {enabled && returnable && (
         <>
           <p className="text-xs font-bold text-muted-foreground">How is this stock received?</p>
           <div className="flex flex-wrap gap-2">
@@ -214,7 +228,7 @@ export function ProductInitialStockSection({
         </>
       )}
 
-      {fields.enableInitialStock && (
+      {enabled && (
         <>
           <input
             className="field"
