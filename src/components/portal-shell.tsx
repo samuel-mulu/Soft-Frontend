@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
+import { InstallAppButton } from '@/components/install-app-button';
 import { api, getToken, getUser, logout, saveSession } from '@/lib/api';
 import { SplashScreen } from '@/components/ui/skeleton';
 import { BRAND_MARK, getLogoPath } from '@/lib/brand';
@@ -57,6 +58,8 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
             <p className="muted text-xs truncate">{displayName}{user.phone ? ` · ${user.phone}` : ''}</p>
           </div>
         </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <InstallAppButton />
         <button
           type="button"
           onClick={logout}
@@ -66,6 +69,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           <LogOut size={16} />
           <span className="hidden xs:inline">Sign out</span>
         </button>
+        </div>
       </header>
       <main className="flex-1 page-shell px-4 py-5 md:px-6 md:py-7 max-w-3xl mx-auto w-full page-enter">{children}</main>
     </div>

@@ -25,6 +25,7 @@ import { api, getToken, logout, saveSession } from '@/lib/api';
 import { prefetchNavRoute } from '@/hooks/queries';
 import { SplashScreen } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { InstallAppButton } from '@/components/install-app-button';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { BRAND_MARK, BRAND_OWNER, getLogoPath } from '@/lib/brand';
@@ -194,6 +195,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <div className="hidden lg:block text-xs font-semibold muted truncate tracking-wide">Distribution workspace</div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
+            <InstallAppButton />
             <Badge variant="secondary" className="hidden sm:inline-flex">
               {user.role === 'OWNER' ? 'Owner' : 'Cashier'}
             </Badge>

@@ -8,6 +8,7 @@ import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { BRAND_MARK, BRAND_OWNER, getLogoPath } from '@/lib/brand';
 import { Button } from '@/components/ui/button';
+import { InstallAppButton } from '@/components/install-app-button';
 
 type Mode = 'customer' | 'staff';
 
@@ -164,6 +165,7 @@ export default function Login() {
             </Button>
           </form>
         )}
+        <InstallAppButton className="mt-4 w-full justify-center" />
       </div>
     </main>
   );
