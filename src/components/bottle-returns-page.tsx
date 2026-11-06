@@ -7,14 +7,7 @@ import { useCustomers, useBottleTypes, useCustomerBottles } from '@/hooks/querie
 import { api, post } from '@/lib/api';
 import { QuantityEntry } from '@/components/quantity-entry';
 import { BottleBalance, BottleBalanceList } from '@/components/balance-display';
-import { BottleDisplayToggle } from '@/components/bottle-display-mode';
-import {
-  formatEachBreakdown,
-  formatQtyEntryLabel,
-  projectBottleInternal,
-  qtyFromMode,
-  type QtyEntryMode,
-} from '@/lib/pack-quantity';
+import { dozenToBottles, formatDozen, projectBottleInternal } from '@/lib/pack-quantity';
 import { invalidateBalanceQueries } from '@/lib/query-keys';
 
 type R = Record<string, unknown>;
@@ -143,9 +136,7 @@ export function BottleReturnsPage() {
 
   const [customerId, setCustomerId] = useState('');
   const [bottleTypeId, setBottleTypeId] = useState('');
-  const [returnMode, setReturnMode] = useState<QtyEntryMode>('each');
   const [returnDozen, setReturnDozen] = useState('');
-  const [returnEach, setReturnEach] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -161,11 +152,11 @@ export function BottleReturnsPage() {
 
   const returnEachParsed = useMemo(() => {
     try {
-      return qtyFromMode(returnMode, returnDozen, returnEach);
+      return dozenToBottles(returnDozen);
     } catch {
       return null;
     }
-  }, [returnMode, returnDozen, returnEach]);
+  }, [returnDozen]);
   const qtyInvalid = returnEachParsed === null;
   const returnEachTotal = returnEachParsed ?? 0;
 
@@ -173,11 +164,6 @@ export function BottleReturnsPage() {
     () => projectBottleInternal(currentInternal, 0, returnEachTotal),
     [currentInternal, returnEachTotal],
   );
-
-  const qtyHint =
-    returnEachTotal > 0
-      ? `${formatQtyEntryLabel(returnMode, returnDozen, returnEach, returnEachTotal)} · ${returnEachTotal} bottles`
-      : null;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -187,13 +173,13 @@ export function BottleReturnsPage() {
     }
     let quantity: number;
     try {
-      quantity = qtyFromMode(returnMode, returnDozen, returnEach);
+      quantity = dozenToBottles(returnDozen);
       if (quantity <= 0) {
         toast.error('Enter a return quantity');
         return;
       }
     } catch {
-      toast.error('Invalid quantity');
+      toast.error('Use whole or half dozens (e.g. 1, 1.5, 2)');
       return;
     }
     setBusy(true);
@@ -207,7 +193,6 @@ export function BottleReturnsPage() {
       toast.success('Bottle return saved');
       await invalidateBalanceQueries(client, customerId);
       setReturnDozen('');
-      setReturnEach('');
       setNote('');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Could not save return');
@@ -221,9 +206,6 @@ export function BottleReturnsPage() {
   return (
     <>
       <Head title="Bottle returns" />
-      <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
-        <BottleDisplayToggle />
-      </div>
       <div className="grid lg:grid-cols-[1fr_1fr] gap-5">
         <Panel title="Receive bottles">
           <form className="space-y-4" onSubmit={onSubmit}>
@@ -234,17 +216,12 @@ export function BottleReturnsPage() {
               options={registeredCustomerOptions(customers, true)}
             />
             <Select label="Bottle type" value={bottleTypeId} onChange={setBottleTypeId} options={bottles as { id: string; name: string }[]} />
-            <Field label="Returned quantity">
+            <Field label="Returned quantity (dozen)">
               <QuantityEntry
-                mode={returnMode}
-                onModeChange={setReturnMode}
-                dozen={returnDozen}
-                each={returnEach}
-                onDozenChange={setReturnDozen}
-                onEachChange={setReturnEach}
+                value={returnDozen}
+                onChange={setReturnDozen}
                 fieldClass="field"
                 invalid={qtyInvalid}
-                hint={qtyHint}
               />
             </Field>
             {bottleTypeId && customerId && (
@@ -256,10 +233,7 @@ export function BottleReturnsPage() {
                 <div className="flex justify-between gap-3">
                   <span className="muted">Returning</span>
                   <span className="font-bold tabular-nums">
-                    {returnEachTotal > 0 ? formatEachBreakdown(returnEachTotal) : '—'}
-                    {returnEachTotal > 0 && (
-                      <span className="muted font-medium ml-1">({returnEachTotal} ea)</span>
-                    )}
+                    {returnEachTotal > 0 ? formatDozen(returnEachTotal) : '—'}
                   </span>
                 </div>
                 <div className="flex justify-between gap-3 border-t border-[#e5eae5] pt-2">
@@ -304,7 +278,7 @@ export function BottleReturnsPage() {
                 name: 'Movement',
                 render: (r) => {
                   const d = n(r.delta);
-                  const qty = Math.abs(d);
+                  const qty = formatDozen(Math.abs(d));
                   const text = d > 0 ? `+${qty} with customer` : d < 0 ? `−${qty} in your stock` : '—';
                   return (
                     <span className={`text-sm font-semibold ${d > 0 ? 'text-[#a8662b]' : d < 0 ? 'text-[#177554]' : ''}`}>

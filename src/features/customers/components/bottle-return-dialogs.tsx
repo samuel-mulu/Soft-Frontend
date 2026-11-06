@@ -17,12 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { QuantityEntry } from '@/components/quantity-entry';
 import { BottleBalance } from '@/components/balance-display';
 import { post, getUser } from '@/lib/api';
-import {
-  formatEachBreakdown,
-  projectBottleInternal,
-  qtyFromMode,
-  type QtyEntryMode,
-} from '@/lib/pack-quantity';
+import { dozenToBottles, formatDozen, projectBottleInternal } from '@/lib/pack-quantity';
 import { invalidateBalanceQueries } from '@/lib/query-keys';
 
 type BaseProps = {
@@ -45,27 +40,24 @@ export function GoodBottleReturnDialog({
   bottlesOwedInternal,
 }: BaseProps) {
   const client = useQueryClient();
-  const [qtyMode, setQtyMode] = useState<QtyEntryMode>('each');
   const [dozen, setDozen] = useState('');
-  const [each, setEach] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
 
   const returnQty = useMemo(() => {
     try {
-      return qtyFromMode(qtyMode, dozen, each);
+      return dozenToBottles(dozen);
     } catch {
       return 0;
     }
-  }, [qtyMode, dozen, each]);
+  }, [dozen]);
 
   const projected = projectBottleInternal(bottlesOwedInternal, 0, returnQty);
 
   useEffect(() => {
     if (!open) {
       setDozen('');
-      setEach('');
       setNote('');
     }
   }, [open]);
@@ -110,26 +102,20 @@ export function GoodBottleReturnDialog({
             <span className="muted">Bottle type:</span> <b>{bottleTypeName}</b>
           </p>
           <div className="flex justify-between rounded-lg border border-border px-3 py-2">
-            <span className="muted">Bottles owed now</span>
+            <span className="muted">Owed now (dozen)</span>
             <BottleBalance internal={bottlesOwedInternal} size="sm" />
           </div>
           <div>
-            <Label>Quantity returned (usable empties)</Label>
+            <Label>Quantity returned in dozen (usable empties)</Label>
             <QuantityEntry
               fieldClass="field"
-              mode={qtyMode}
-              onModeChange={setQtyMode}
-              dozen={dozen}
-              each={each}
-              onDozenChange={setDozen}
-              onEachChange={setEach}
+              value={dozen} onChange={setDozen}
             />
           </div>
           {returnQty > 0 && (
             <div className="rounded-lg bg-muted/50 p-3 space-y-1">
               <p>
-                Returning: <b>{formatEachBreakdown(returnQty)}</b>{' '}
-                <span className="muted">({returnQty} ea)</span>
+                Returning: <b>{formatDozen(returnQty)}</b>
               </p>
               <p className="flex justify-between font-semibold pt-1 border-t border-border">
                 <span>After return</span>
@@ -166,9 +152,7 @@ export function BrokenBottleReturnDialog({
 }: BaseProps) {
   const client = useQueryClient();
   const owner = getUser()?.role === 'OWNER';
-  const [qtyMode, setQtyMode] = useState<QtyEntryMode>('each');
   const [dozen, setDozen] = useState('');
-  const [each, setEach] = useState('');
   const [reason, setReason] = useState('');
   const [waive, setWaive] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -177,16 +161,15 @@ export function BrokenBottleReturnDialog({
 
   const qty = useMemo(() => {
     try {
-      return qtyFromMode(qtyMode, dozen, each);
+      return dozenToBottles(dozen);
     } catch {
       return 0;
     }
-  }, [qtyMode, dozen, each]);
+  }, [dozen]);
 
   useEffect(() => {
     if (!open) {
       setDozen('');
-      setEach('');
       setReason('');
       setWaive(false);
       idempotencyKeyRef.current = null;
@@ -251,15 +234,10 @@ export function BrokenBottleReturnDialog({
             <BottleBalance internal={bottlesOwedInternal} size="sm" />
           </div>
           <div>
-            <Label>Broken quantity</Label>
+            <Label>Broken quantity (dozen)</Label>
             <QuantityEntry
               fieldClass="field"
-              mode={qtyMode}
-              onModeChange={setQtyMode}
-              dozen={dozen}
-              each={each}
-              onDozenChange={setDozen}
-              onEachChange={setEach}
+              value={dozen} onChange={setDozen}
             />
           </div>
           <div>

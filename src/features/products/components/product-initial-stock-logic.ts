@@ -1,19 +1,14 @@
-import { qtyFromMode, type QtyEntryMode } from '@/lib/pack-quantity';
+import { DOZEN_STEP_MESSAGE, dozenToBottles, formatDozen } from '@/lib/pack-quantity';
 
 export type InitialReceiveMode = 'FROM_EXISTING_EMPTIES' | 'WITH_BOTTLES' | 'MIXED_SOURCE';
 
 export type InitialStockFields = {
   enableInitialStock: boolean;
   receiveMode: InitialReceiveMode;
-  qtyMode: QtyEntryMode;
+  /** All quantity fields are dozens (0.5 steps). */
   dozen: string;
-  each: string;
-  mixedFromMode: QtyEntryMode;
   mixedFromDozen: string;
-  mixedFromEach: string;
-  mixedSupMode: QtyEntryMode;
   mixedSupDozen: string;
-  mixedSupEach: string;
   unitOnlyQty: string;
   initialSupplierId: string;
   initialUnitCost: string;
@@ -24,15 +19,9 @@ export type InitialStockFields = {
 export const defaultInitialStockFields = (): InitialStockFields => ({
   enableInitialStock: false,
   receiveMode: 'WITH_BOTTLES',
-  qtyMode: 'each',
   dozen: '',
-  each: '',
-  mixedFromMode: 'each',
   mixedFromDozen: '',
-  mixedFromEach: '',
-  mixedSupMode: 'each',
   mixedSupDozen: '',
-  mixedSupEach: '',
   unitOnlyQty: '',
   initialSupplierId: '',
   initialUnitCost: '',
@@ -40,19 +29,12 @@ export const defaultInitialStockFields = (): InitialStockFields => ({
   supplierName: '',
 });
 
-function resolveEach(
-  mode: QtyEntryMode,
-  dozen: string,
-  each: string,
-): { total: number; error?: string } {
+/** Dozen text -> bottle count. */
+function resolveEach(dozen: string): { total: number; error?: string } {
   try {
-    const total = qtyFromMode(mode, dozen, each);
-    if (!Number.isSafeInteger(total) || total < 0) {
-      return { total: 0, error: 'Enter a valid whole number quantity' };
-    }
-    return { total };
+    return { total: dozenToBottles(dozen) };
   } catch {
-    return { total: 0, error: 'Enter a valid whole number quantity' };
+    return { total: 0, error: DOZEN_STEP_MESSAGE };
   }
 }
 
@@ -69,29 +51,28 @@ export function computeInitialStockQuantities(
     return { fromExisting: 0, withSupplier: 0, totalFull: 0 };
   }
   if (!returnable) {
-    const q = Math.floor(Number(fields.unitOnlyQty || 0));
-    if (!Number.isFinite(q) || q < 0 || !Number.isInteger(q)) {
-      return { fromExisting: 0, withSupplier: 0, totalFull: 0, error: 'Invalid starting stock' };
-    }
+    const r = resolveEach(fields.unitOnlyQty);
+    if (r.error) return { fromExisting: 0, withSupplier: 0, totalFull: 0, error: r.error };
+    const q = r.total;
     if (q === 0) return { fromExisting: 0, withSupplier: 0, totalFull: 0 };
     return { fromExisting: 0, withSupplier: q, totalFull: q };
   }
 
   if (fields.receiveMode === 'FROM_EXISTING_EMPTIES') {
-    const r = resolveEach(fields.qtyMode, fields.dozen, fields.each);
+    const r = resolveEach(fields.dozen);
     if (r.error) return { fromExisting: 0, withSupplier: 0, totalFull: 0, error: r.error };
     if (r.total <= 0) return { fromExisting: 0, withSupplier: 0, totalFull: 0, error: 'Quantity must be greater than zero' };
     return { fromExisting: r.total, withSupplier: 0, totalFull: r.total };
   }
   if (fields.receiveMode === 'WITH_BOTTLES') {
-    const r = resolveEach(fields.qtyMode, fields.dozen, fields.each);
+    const r = resolveEach(fields.dozen);
     if (r.error) return { fromExisting: 0, withSupplier: 0, totalFull: 0, error: r.error };
     if (r.total <= 0) return { fromExisting: 0, withSupplier: 0, totalFull: 0, error: 'Quantity must be greater than zero' };
     return { fromExisting: 0, withSupplier: r.total, totalFull: r.total };
   }
 
-  const fromR = resolveEach(fields.mixedFromMode, fields.mixedFromDozen, fields.mixedFromEach);
-  const supR = resolveEach(fields.mixedSupMode, fields.mixedSupDozen, fields.mixedSupEach);
+  const fromR = resolveEach(fields.mixedFromDozen);
+  const supR = resolveEach(fields.mixedSupDozen);
   if (fromR.error) return { fromExisting: 0, withSupplier: 0, totalFull: 0, error: fromR.error };
   if (supR.error) return { fromExisting: 0, withSupplier: 0, totalFull: 0, error: supR.error };
   if (fromR.total <= 0 && supR.total <= 0) {
@@ -120,7 +101,7 @@ export function validateInitialStock(
   }
   if (!fields.enableInitialStock || q.totalFull === 0) return null;
   if (returnable && q.fromExisting > availableEmpty) {
-    return `Not enough empty bottles in warehouse (${availableEmpty} available, ${q.fromExisting} requested)`;
+    return `Not enough empty bottles in warehouse (${formatDozen(availableEmpty)} available, ${formatDozen(q.fromExisting)} requested)`;
   }
   if (
     returnable &&

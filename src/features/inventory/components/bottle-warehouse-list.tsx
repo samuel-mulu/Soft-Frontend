@@ -10,6 +10,8 @@ import { SubtleRefreshIndicator } from '@/components/shared/subtle-refresh-indic
 import { getUser, post } from '@/lib/api';
 import { invalidateBalanceQueries, queryKeys } from '@/lib/query-keys';
 import { presentCustomerBalance } from '@/lib/customer-balance';
+import { formatDozen, isValidDozenField, safeDozenToBottles } from '@/lib/pack-quantity';
+import { QuantityEntry } from '@/components/quantity-entry';
 import { QueryRefreshButton } from '@/components/shared/query-refresh-button';
 import { LoadErrorBanner } from '@/components/shared/load-error';
 import { DataLoadSkeleton } from '@/components/ui/skeleton';
@@ -82,7 +84,11 @@ export function BottleWarehouseList() {
   async function createBottle() {
     setBusy(true);
     try {
-      const qty = parseInt(initialQty || '0', 10) || 0;
+      if (!isValidDozenField(initialQty)) {
+        toast.error('Use whole or half dozens (e.g. 1, 1.5, 2)');
+        return;
+      }
+      const qty = safeDozenToBottles(initialQty);
       await post('/bottle-types', {
         name: name.trim(),
         capacityLabel: capacityLabel.trim() || undefined,
@@ -128,7 +134,7 @@ export function BottleWarehouseList() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-6 md:mb-7">
             <StatCard
               label="In warehouse"
-              value={String(n(totals.warehouse))}
+              value={formatDozen(n(totals.warehouse))}
               icon={GlassWater}
               small="Physical empties you hold"
               valueClassName="text-primary"
@@ -148,7 +154,7 @@ export function BottleWarehouseList() {
             />
             <StatCard
               label="Damaged"
-              value={String(n(totals.damaged))}
+              value={formatDozen(n(totals.damaged))}
               icon={AlertTriangle}
               small="Write-off / broken stock"
             />
@@ -187,10 +193,10 @@ export function BottleWarehouseList() {
                         <b>{String(r.name)}</b>
                       </td>
                       <td>
-                        <span className="font-extrabold text-primary tabular-nums">{n(r.warehouse)}</span>
+                        <span className="font-extrabold text-primary tabular-nums">{formatDozen(n(r.warehouse))}</span>
                       </td>
                       <td>
-                        <span className="font-extrabold tabular-nums">{n(r.damaged)}</span>
+                        <span className="font-extrabold tabular-nums">{formatDozen(n(r.damaged))}</span>
                       </td>
                       <td>{withCustomersCell(n(r.customerObligationsInternal))}</td>
                       {owner ? (
@@ -225,11 +231,11 @@ export function BottleWarehouseList() {
             onChange={(e) => setCapacityLabel(e.target.value)}
             placeholder="e.g. 300ml"
           />
-          <Label>Replacement price ETB (optional)</Label>
+          <Label>Replacement price ETB per dozen (optional)</Label>
           <Input value={replacementPrice} onChange={(e) => setReplacementPrice(e.target.value)} />
-          <Label>Initial empty warehouse quantity (optional)</Label>
-          <Input type="number" min={0} value={initialQty} onChange={(e) => setInitialQty(e.target.value)} />
-          {parseInt(initialQty || '0', 10) > 0 && (
+          <Label>Initial empty warehouse quantity in dozen (optional)</Label>
+          <QuantityEntry fieldClass="field" value={initialQty} onChange={setInitialQty} />
+          {safeDozenToBottles(initialQty) > 0 && (
             <>
               <Label>Reason for initial stock</Label>
               <Input value={note} onChange={(e) => setNote(e.target.value)} />

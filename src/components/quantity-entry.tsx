@@ -1,94 +1,51 @@
 'use client';
 
-import type { QtyEntryMode } from '@/lib/pack-quantity';
+import { isValidDozenField } from '@/lib/pack-quantity';
 
-const MODES: { id: QtyEntryMode; label: string }[] = [
-  { id: 'each', label: 'Each' },
-  { id: 'dozen', label: 'Dozen' },
-  { id: 'mixed', label: 'Dz + Ea' },
-];
-
+/** Quantity input — dozens only, in half-dozen steps (1, 1.5, 2 …). */
 export function QuantityEntry({
-  mode,
-  onModeChange,
-  dozen,
-  each,
-  onDozenChange,
-  onEachChange,
+  value,
+  onChange,
   fieldClass,
   invalid,
   hint,
   disabled,
-  dozenPlaceholder = 'Dz',
-  eachPlaceholder = 'Ea',
+  placeholder = 'Dozen',
+  ariaLabel = 'Quantity in dozens',
 }: {
-  mode: QtyEntryMode;
-  onModeChange: (m: QtyEntryMode) => void;
-  dozen: string;
-  each: string;
-  onDozenChange: (v: string) => void;
-  onEachChange: (v: string) => void;
+  value: string;
+  onChange: (v: string) => void;
   fieldClass: string;
   invalid?: boolean;
   hint?: string | null;
   disabled?: boolean;
-  dozenPlaceholder?: string;
-  eachPlaceholder?: string;
+  placeholder?: string;
+  ariaLabel?: string;
 }) {
-  const inv = invalid ? ' field-invalid' : '';
-  const unitSelect = `fs-control qty-entry-unit sale-qty-unit touch-target ${fieldClass}${inv}`;
-  const numInput = `fs-control qty-entry-num sale-qty-num ${fieldClass}${inv}`;
+  const badStep = !isValidDozenField(value);
+  const inv = invalid || badStep ? ' field-invalid' : '';
+  const shownHint = badStep ? 'Use whole or half dozens (e.g. 1, 1.5, 2)' : hint;
 
   return (
     <div className="qty-entry min-w-0">
       <div className="sale-qty-row">
-        {(mode === 'dozen' || mode === 'mixed') && (
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            disabled={disabled}
-            placeholder={dozenPlaceholder}
-            className={numInput}
-            value={dozen}
-            onChange={(e) => onDozenChange(e.target.value)}
-            aria-label="Dozen quantity"
-          />
-        )}
-        {(mode === 'each' || mode === 'mixed') && (
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            disabled={disabled}
-            placeholder={eachPlaceholder}
-            className={
-              mode === 'each'
-                ? `${fieldClass} qty-entry-num qty-entry-num--wide flex-1 min-w-0${inv}`
-                : numInput
-            }
-            value={each}
-            onChange={(e) => onEachChange(e.target.value)}
-            aria-label="Each quantity"
-          />
-        )}
-        <select
+        <input
+          type="number"
+          inputMode="decimal"
+          min={0}
+          step={0.5}
           disabled={disabled}
-          className={unitSelect}
-          value={mode}
-          aria-label="Quantity unit"
-          onChange={(e) => onModeChange(e.target.value as QtyEntryMode)}
-        >
-          {MODES.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.label}
-            </option>
-          ))}
-        </select>
+          placeholder={placeholder}
+          className={`fs-control ${fieldClass} qty-entry-num qty-entry-num--wide flex-1 min-w-0${inv}`}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          aria-label={ariaLabel}
+        />
+        <span className="qty-entry-unit sale-qty-unit self-center px-2 text-sm font-bold text-[#68776e]">dz</span>
       </div>
-      {hint ? (
-        <p className="sale-qty-units-hint fs-amount truncate" title={hint}>
-          {hint}
+      {shownHint ? (
+        <p className="sale-qty-units-hint fs-amount truncate" title={shownHint}>
+          {shownHint}
         </p>
       ) : null}
     </div>

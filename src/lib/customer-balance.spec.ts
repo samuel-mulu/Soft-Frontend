@@ -18,8 +18,8 @@ describe('customer-balance display', () => {
   });
 
   it('formats bottles', () => {
-    expect(formatDisplayBottle(-8)).toBe('−8');
-    expect(formatDisplayBottle(2)).toBe('+2');
+    expect(formatDisplayBottle(-24)).toBe('−2 dz');
+    expect(formatDisplayBottle(6)).toBe('+0.5 dz');
   });
 
   it('projects sale money balance', () => {
@@ -70,8 +70,8 @@ describe('customer-balance display', () => {
     expect(presentCustomerBalance(40, 'bottle').display).toBe(-40);
     expect(presentCustomerBalance(0, 'bottle').display).toBe(0);
     expect(presentCustomerBalance(-20, 'bottle').display).toBe(20);
-    expect(presentCustomerBalance(-20, 'bottle', 'customer').label).toMatch(/bottles credit/);
-    expect(presentCustomerBalance(100, 'bottle', 'staff').label).toMatch(/Customer owes 100/);
+    expect(presentCustomerBalance(-20, 'bottle', 'customer').label).toMatch(/1\.67 dz credit/);
+    expect(presentCustomerBalance(100, 'bottle', 'staff').label).toMatch(/Customer owes 8\.33 dz/);
   });
 
   it('compensation clears bottles and adds money debt once', () => {

@@ -15,6 +15,7 @@ import {
   type PortalPaymentRow,
 } from '@/lib/portal-account';
 import { presentCustomerBalance } from '@/lib/customer-balance';
+import { formatDozen } from '@/lib/pack-quantity';
 
 type R = Record<string, unknown>;
 const n = (v: unknown) => Number(v || 0);
@@ -347,7 +348,7 @@ export function CustomerPortalAccount() {
                           r.direction === 'out' ? 'text-[#a8662b]' : 'text-[#15803D]'
                         }`}
                       >
-                        {r.quantity}
+                        {formatDozen(r.quantity)}
                       </span>
                     );
                   }}
@@ -366,7 +367,7 @@ export function CustomerPortalAccount() {
                     {damagedRows.map((r) => (
                       <li key={r.id} className="py-3">
                         <p className="font-semibold text-sm">
-                          {r.quantity} × {r.bottleTypeName}
+                          {formatDozen(r.quantity)} × {r.bottleTypeName}
                         </p>
                         <p className="text-xs text-[#64748B] mt-0.5">{date(r.at)}</p>
                         <p className="text-xs font-medium text-[#192821] mt-1">{r.liabilityLabel}</p>

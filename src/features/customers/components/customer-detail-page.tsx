@@ -6,7 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useBottleTypes, useCustomerHistory, usePortalHistory } from '@/hooks/queries';
 import { money, date } from '@/lib/api';
 import { LoadError, SkeletonStatGrid, SkeletonTable } from '@/components/ui/skeleton';
-import { BottleDisplayToggle } from '@/components/bottle-display-mode';
+import { formatDozen, perDozenTotal } from '@/lib/pack-quantity';
 import { BottleBalance } from '@/components/balance-display';
 import { presentCustomerBalance } from '@/lib/customer-balance';
 import { Button } from '@/components/ui/button';
@@ -42,15 +42,16 @@ function bottleHistoryTableRows(movements: R[]): R[] {
 function movementLabel(m: R): { label: string; kind: 'bottle' | 'money' } {
   const reason = String(m.reason || '');
   const d = n(m.delta);
-  const qty = Math.abs(d);
+  const qty = formatDozen(Math.abs(d));
+  const signed = `${d > 0 ? '+' : ''}${formatDozen(d)}`;
   if (reason === 'SALE') return { label: `Bottle issued (+${qty} with customer)`, kind: 'bottle' };
   if (reason === 'RETURN') return { label: `Bottle returned (−${qty}, to warehouse)`, kind: 'bottle' };
   if (reason === 'COMPENSATION')
     return { label: `Bottle compensation (−${qty} obligation)`, kind: 'bottle' };
   if (reason === 'BROKEN_WAIVED') return { label: `Bottle liability waived (−${qty})`, kind: 'bottle' };
   if (reason === 'ADJUSTMENT')
-    return { label: `Bottle adjustment (${d > 0 ? '+' : ''}${d})`, kind: 'bottle' };
-  return { label: `${reason} (${d > 0 ? '+' : ''}${d})`, kind: 'bottle' };
+    return { label: `Bottle adjustment (${signed})`, kind: 'bottle' };
+  return { label: `${reason} (${signed})`, kind: 'bottle' };
 }
 
 function buildUnifiedHistory(history: R | undefined, bottleName: (id: string) => string): R[] {
@@ -74,7 +75,7 @@ function buildUnifiedHistory(history: R | undefined, bottleName: (id: string) =>
       id: `bc-${c.id}`,
       at: c.createdAt,
       kind: 'money',
-      title: `Bottle compensation charged (${c.quantity} × ${money(c.unitPrice)})`,
+      title: `Bottle compensation charged (${formatDozen(n(c.quantity))} × ${money(c.unitPrice)} / dz)`,
       detail: money(c.totalAmount),
       meta: [c.status, (c.bottleType as R)?.name, c.note].filter(Boolean).join(' · '),
     });
@@ -190,8 +191,7 @@ export function CustomerHistoryPage({
 
           <section>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <h2 className="font-extrabold text-base">Bottle balances</h2>
-              <BottleDisplayToggle compact />
+              <h2 className="font-extrabold text-base">Bottle balances (dozen)</h2>
             </div>
             {!bottleTotals.length ? (
               <p className="muted text-sm panel p-4">No bottle activity for this customer yet.</p>
@@ -202,7 +202,7 @@ export function CustomerHistoryPage({
                     <tr>
                       <th>Bottle type</th>
                       <th>Balance</th>
-                      <th>Replacement</th>
+                      <th>Replacement / dz</th>
                       <th>Est. value</th>
                       {staff && <th>Actions</th>}
                     </tr>
@@ -212,7 +212,7 @@ export function CustomerHistoryPage({
                       const bt = bottles.find((b) => String(b.id) === row.bottleTypeId);
                       const owed = Math.max(0, n(row.outstanding));
                       const price = n(bt?.replacementPrice);
-                      const est = owed > 0 && price > 0 ? owed * price : 0;
+                      const est = owed > 0 && price > 0 ? perDozenTotal(price, owed) : 0;
                       return (
                         <tr key={row.bottleTypeId}>
                           <td>

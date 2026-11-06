@@ -1,6 +1,7 @@
 'use client';
 
 import { QuantityEntry } from '@/components/quantity-entry';
+import { formatDozen } from '@/lib/pack-quantity';
 import {
   buildProductCreateStockPayload,
   computeInitialStockQuantities,
@@ -76,14 +77,11 @@ export function ProductInitialStockSection({
 
       {enabled && !returnable && (
         <div>
-          <p className="label mb-2">Starting stock (units)</p>
-          <input
-            type="number"
-            min={0}
-            className="field"
+          <p className="label mb-2">Starting stock (dozen)</p>
+          <QuantityEntry
+            fieldClass="field"
             value={fields.unitOnlyQty}
-            onChange={(e) => onChange({ unitOnlyQty: e.target.value })}
-            placeholder="0"
+            onChange={(v) => onChange({ unitOnlyQty: v })}
           />
         </div>
       )}
@@ -119,18 +117,14 @@ export function ProductInitialStockSection({
               {fields.receiveMode === 'FROM_EXISTING_EMPTIES' && (
                 <p className="text-xs text-muted-foreground">
                   Available empty in warehouse:{' '}
-                  <span className="font-bold tabular-nums text-foreground">{availableEmpty}</span>
+                  <span className="font-bold tabular-nums text-foreground">{formatDozen(availableEmpty)}</span>
                 </p>
               )}
-              <p className="label mb-1">Quantity</p>
+              <p className="label mb-1">Quantity (dozen)</p>
               <QuantityEntry
                 fieldClass="field"
-                mode={fields.qtyMode}
-                onModeChange={(m) => onChange({ qtyMode: m })}
-                dozen={fields.dozen}
-                each={fields.each}
-                onDozenChange={(v) => onChange({ dozen: v })}
-                onEachChange={(v) => onChange({ each: v })}
+                value={fields.dozen}
+                onChange={(v) => onChange({ dozen: v })}
               />
             </>
           )}
@@ -139,31 +133,23 @@ export function ProductInitialStockSection({
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
                 Available empty:{' '}
-                <span className="font-bold tabular-nums">{availableEmpty}</span>. Total full stock
+                <span className="font-bold tabular-nums">{formatDozen(availableEmpty)}</span>. Total full stock
                 increases by both portions combined.
               </p>
               <div>
-                <p className="label mb-1">Using my empty bottles</p>
+                <p className="label mb-1">Using my empty bottles (dozen)</p>
                 <QuantityEntry
                   fieldClass="field"
-                  mode={fields.mixedFromMode}
-                  onModeChange={(m) => onChange({ mixedFromMode: m })}
-                  dozen={fields.mixedFromDozen}
-                  each={fields.mixedFromEach}
-                  onDozenChange={(v) => onChange({ mixedFromDozen: v })}
-                  onEachChange={(v) => onChange({ mixedFromEach: v })}
+                  value={fields.mixedFromDozen}
+                  onChange={(v) => onChange({ mixedFromDozen: v })}
                 />
               </div>
               <div>
-                <p className="label mb-1">With new supplier bottles</p>
+                <p className="label mb-1">With new supplier bottles (dozen)</p>
                 <QuantityEntry
                   fieldClass="field"
-                  mode={fields.mixedSupMode}
-                  onModeChange={(m) => onChange({ mixedSupMode: m })}
-                  dozen={fields.mixedSupDozen}
-                  each={fields.mixedSupEach}
-                  onDozenChange={(v) => onChange({ mixedSupDozen: v })}
-                  onEachChange={(v) => onChange({ mixedSupEach: v })}
+                  value={fields.mixedSupDozen}
+                  onChange={(v) => onChange({ mixedSupDozen: v })}
                 />
               </div>
             </div>
@@ -192,7 +178,7 @@ export function ProductInitialStockSection({
               {fields.initialSupplierId && (
                 <input
                   className="field mt-2"
-                  placeholder="Unit cost ETB"
+                  placeholder="Unit cost ETB per dozen"
                   value={fields.initialUnitCost}
                   onChange={(e) => onChange({ initialUnitCost: e.target.value })}
                 />
@@ -203,24 +189,24 @@ export function ProductInitialStockSection({
           {q.totalFull > 0 && (
             <div className="rounded-lg border border-border bg-card p-3 text-xs space-y-1">
               <p>
-                Full stock added: <b className="tabular-nums">{q.totalFull}</b>
+                Full stock added: <b className="tabular-nums">{formatDozen(q.totalFull)}</b>
               </p>
               {returnable && q.fromExisting > 0 && (
                 <>
                   <p>
-                    From empties: <b className="tabular-nums">{q.fromExisting}</b>
+                    From empties: <b className="tabular-nums">{formatDozen(q.fromExisting)}</b>
                   </p>
                   <p>
                     Projected empty stock:{' '}
                     <b className={`tabular-nums ${projectedEmpty < 0 ? 'text-destructive' : ''}`}>
-                      {projectedEmpty}
+                      {formatDozen(projectedEmpty)}
                     </b>
                   </p>
                 </>
               )}
               {returnable && q.withSupplier > 0 && (
                 <p>
-                  With supplier bottles: <b className="tabular-nums">{q.withSupplier}</b>
+                  With supplier bottles: <b className="tabular-nums">{formatDozen(q.withSupplier)}</b>
                 </p>
               )}
             </div>

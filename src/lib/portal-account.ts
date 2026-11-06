@@ -1,4 +1,5 @@
 /** Customer portal account view models (read-only presentation). */
+import { formatDozen } from './pack-quantity';
 
 export type PortalMoneyStatus = 'settled' | 'owe' | 'credit';
 
@@ -101,7 +102,7 @@ export function buildPortalPaymentRows(history: Record<string, unknown>): Portal
       id: `comp-${c.id}`,
       at: String(c.createdAt),
       category: 'charge',
-      title: `Bottle compensation · ${c.quantity} ${bt}`,
+      title: `Bottle compensation · ${formatDozen(Number(c.quantity || 0))} ${bt}`,
       amountEtb: n(c.totalAmount),
       status: String(c.status || 'Charge'),
     });
@@ -142,23 +143,23 @@ export type PortalBottleRow = {
 };
 
 export function portalBottleMovementLabel(reason: string, delta: number): { title: string; direction: 'out' | 'in' } {
-  const qty = Math.abs(delta);
+  const qty = formatDozen(Math.abs(delta));
   switch (reason) {
     case 'SALE':
-      return { title: `${qty} bottles issued`, direction: 'out' };
+      return { title: `${qty} issued`, direction: 'out' };
     case 'RETURN':
-      return { title: `${qty} bottles returned`, direction: 'in' };
+      return { title: `${qty} returned`, direction: 'in' };
     case 'COMPENSATION':
-      return { title: `${qty} bottles settled by compensation`, direction: 'in' };
+      return { title: `${qty} settled by compensation`, direction: 'in' };
     case 'BROKEN_WAIVED':
-      return { title: `${qty} bottles — damaged (liability waived)`, direction: 'in' };
+      return { title: `${qty} — damaged (liability waived)`, direction: 'in' };
     case 'ADJUSTMENT':
       return {
-        title: delta > 0 ? `${qty} bottles added to your account` : `${qty} bottles removed from your account`,
+        title: delta > 0 ? `${qty} added to your account` : `${qty} removed from your account`,
         direction: delta > 0 ? 'out' : 'in',
       };
     default:
-      return { title: `${qty} bottles updated`, direction: delta > 0 ? 'out' : 'in' };
+      return { title: `${qty} updated`, direction: delta > 0 ? 'out' : 'in' };
   }
 }
 

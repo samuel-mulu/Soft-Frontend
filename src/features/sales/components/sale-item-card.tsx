@@ -7,8 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { FS_CONTROL, FS_LABEL_STRONG } from '@/lib/ui-classes';
-import type { QtyEntryMode } from '@/lib/pack-quantity';
-import { returnedEquivalentHint, soldEquivalentHint, type SaleLine } from '@/lib/sale-line-quantity';
+import type { SaleLine } from '@/lib/sale-line-quantity';
 import { EntityCombobox } from '@/features/sales/components/entity-combobox';
 import { X } from 'lucide-react';
 
@@ -84,38 +83,26 @@ export function SaleItemCard({
       <CardContent className="space-y-4 px-4 py-4">
         <div className={`grid gap-3 ${showBottleReturns ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
           <div className="fs-section-surface p-3">
-            <Label className={`${FS_LABEL_STRONG} mb-2`}>Quantity sold</Label>
+            <Label className={`${FS_LABEL_STRONG} mb-2`}>Quantity sold (dozen)</Label>
             <QuantityInput
-              mode={line.qtyMode}
-              onModeChange={(m: QtyEntryMode) => onPatch({ qtyMode: m })}
-              dozen={line.soldDozen}
-              each={line.soldEach}
-              onDozenChange={(v) => onPatch({ soldDozen: v })}
-              onEachChange={(v) => onPatch({ soldEach: v })}
+              value={line.soldDozen}
+              onChange={(v) => onPatch({ soldDozen: v })}
               fieldClass={FS_CONTROL}
               invalid={badQty}
               disabled={!product}
-              hint={product ? soldEquivalentHint(line) : null}
             />
           </div>
           {showBottleReturns && (
             <div className="fs-section-surface p-3">
-              <Label className={`${FS_LABEL_STRONG} mb-2`}>Bottles returned</Label>
+              <Label className={`${FS_LABEL_STRONG} mb-2`}>Bottles returned (dozen)</Label>
               {lineReturnable ? (
-                <>
-                  <QuantityInput
-                    mode={line.retMode}
-                    onModeChange={(m: QtyEntryMode) => onPatch({ retMode: m, retEdited: true })}
-                    dozen={line.retDozen}
-                    each={line.retEach}
-                    onDozenChange={(v) => onPatch({ retDozen: v, retEdited: true })}
-                    onEachChange={(v) => onPatch({ retEach: v, retEdited: true })}
-                    fieldClass={FS_CONTROL}
-                    invalid={badRet}
-                    disabled={!product}
-                    hint={product ? returnedEquivalentHint(line) : null}
-                  />
-                </>
+                <QuantityInput
+                  value={line.retDozen}
+                  onChange={(v) => onPatch({ retDozen: v, retEdited: true })}
+                  fieldClass={FS_CONTROL}
+                  invalid={badRet}
+                  disabled={!product}
+                />
               ) : (
                 <p className="text-sm text-muted-foreground py-1">Not returnable</p>
               )}

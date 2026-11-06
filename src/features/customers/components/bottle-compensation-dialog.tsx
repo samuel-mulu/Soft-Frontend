@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { QuantityEntry } from '@/components/quantity-entry';
 import { money, post } from '@/lib/api';
-import { qtyFromMode, type QtyEntryMode } from '@/lib/pack-quantity';
+import { dozenToBottles, formatDozen, perDozenTotal } from '@/lib/pack-quantity';
 import { invalidateBalanceQueries } from '@/lib/query-keys';
 
 type BottleType = {
@@ -46,9 +46,7 @@ export function BottleCompensationDialog({
   bottlesOwedInternal,
 }: BottleCompensationDialogProps) {
   const client = useQueryClient();
-  const [qtyMode, setQtyMode] = useState<QtyEntryMode>('each');
   const [dozen, setDozen] = useState('');
-  const [each, setEach] = useState('');
   const [payNow, setPayNow] = useState('0');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -60,13 +58,13 @@ export function BottleCompensationDialog({
 
   const quantity = useMemo(() => {
     try {
-      return qtyFromMode(qtyMode, dozen, each);
+      return dozenToBottles(dozen);
     } catch {
       return 0;
     }
-  }, [qtyMode, dozen, each]);
+  }, [dozen]);
 
-  const totalCharge = unitPrice > 0 && quantity > 0 ? unitPrice * quantity : 0;
+  const totalCharge = unitPrice > 0 && quantity > 0 ? perDozenTotal(unitPrice, quantity) : 0;
   const payNowNum = n(payNow);
   const remainingBottles = owed - quantity;
   const compensationOutstanding = Math.max(0, totalCharge - payNowNum);
@@ -75,7 +73,6 @@ export function BottleCompensationDialog({
     if (!open) {
       setResult(null);
       setDozen('');
-      setEach('');
       setPayNow('0');
       setNote('');
     }
@@ -83,8 +80,8 @@ export function BottleCompensationDialog({
 
   const validationError = useMemo(() => {
     if (!unitPrice || unitPrice <= 0) return 'Set a replacement price on this bottle type first (Inventory).';
-    if (quantity <= 0) return 'Enter how many bottles to compensate.';
-    if (quantity > owed) return `Cannot exceed ${owed} bottles currently owed.`;
+    if (quantity <= 0) return 'Enter how many dozen to compensate.';
+    if (quantity > owed) return `Cannot exceed ${formatDozen(owed)} currently owed.`;
     if (payNowNum < 0) return 'Pay now cannot be negative.';
     if (payNowNum > totalCharge + 0.001) return 'Pay now cannot exceed the total charge.';
     return null;
@@ -126,8 +123,8 @@ export function BottleCompensationDialog({
             <p className="font-semibold text-primary">Compensation saved</p>
             <ul className="rounded-lg bg-muted/50 p-3 space-y-1.5">
               <li>
-                Bottle obligation reduced by <b>{quantity}</b> — remaining{' '}
-                <b>{Math.max(0, remainingBottles)}</b> bottles owed
+                Bottle obligation reduced by <b>{formatDozen(quantity)}</b> — remaining{' '}
+                <b>{formatDozen(Math.max(0, remainingBottles))}</b> owed
               </li>
               <li>
                 Charge: <b>{money(totalCharge)}</b>
@@ -158,24 +155,19 @@ export function BottleCompensationDialog({
                 <p className="font-semibold mt-1">{bottleType?.name || bottleTypeId}</p>
               </div>
               <div className="flex justify-between gap-2 rounded-lg border border-border px-3 py-2">
-                <span className="muted">Bottles owed</span>
-                <span className="font-bold tabular-nums">{owed}</span>
+                <span className="muted">Owed (dozen)</span>
+                <span className="font-bold tabular-nums">{formatDozen(owed)}</span>
               </div>
               <div>
-                <Label>Quantity to compensate</Label>
+                <Label>Quantity to compensate (dozen)</Label>
                 <QuantityEntry
                   fieldClass="field"
-                  mode={qtyMode}
-                  onModeChange={setQtyMode}
-                  dozen={dozen}
-                  each={each}
-                  onDozenChange={setDozen}
-                  onEachChange={setEach}
+                  value={dozen} onChange={setDozen}
                 />
               </div>
               <div className="flex justify-between gap-2">
-                <span className="muted">Replacement price</span>
-                <span className="font-bold">{unitPrice > 0 ? money(unitPrice) : 'Not set'}</span>
+                <span className="muted">Replacement price per dozen</span>
+                <span className="font-bold">{unitPrice > 0 ? `${money(unitPrice)} / dz` : 'Not set'}</span>
               </div>
               <div className="flex justify-between gap-2 text-base">
                 <span className="font-semibold">Total charge</span>

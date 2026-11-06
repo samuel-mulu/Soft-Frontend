@@ -1,21 +1,10 @@
-import {
-  QtyEntryMode,
-  UNITS_PER_DOZEN,
-  formatEachBreakdown,
-  formatQtyEntryLabel,
-  parseQtyField,
-  qtyFromMode,
-  toEach,
-} from './pack-quantity';
+import { dozenToBottles, formatDozen, safeDozenToBottles } from './pack-quantity';
 
+/** A sale line is entered in dozens only. Helpers return single-bottle counts for the API. */
 export type SaleLine = {
   productId: string;
-  qtyMode: QtyEntryMode;
   soldDozen: string;
-  soldEach: string;
-  retMode: QtyEntryMode;
   retDozen: string;
-  retEach: string;
   retEdited?: boolean;
   linePaid?: string;
   lineMethod?: string;
@@ -25,60 +14,34 @@ export type SaleLine = {
 export function emptySaleLine(): SaleLine {
   return {
     productId: '',
-    qtyMode: 'each',
     soldDozen: '',
-    soldEach: '',
-    retMode: 'each',
     retDozen: '',
-    retEach: '',
     retEdited: false,
   };
 }
 
+/** Bottles sold on the line (0 when the field is blank or invalid). */
 export function lineSoldEach(line: SaleLine): number {
-  try {
-    return qtyFromMode(line.qtyMode, line.soldDozen, line.soldEach, UNITS_PER_DOZEN);
-  } catch {
-    return 0;
-  }
+  return safeDozenToBottles(line.soldDozen);
 }
 
+/** Bottles returned on the line (0 when the field is blank or invalid). */
 export function lineReturnedEach(line: SaleLine): number {
-  try {
-    return qtyFromMode(line.retMode, line.retDozen, line.retEach, UNITS_PER_DOZEN);
-  } catch {
-    return 0;
-  }
+  return safeDozenToBottles(line.retDozen);
 }
 
 export function lineSoldEachStrict(line: SaleLine): number {
-  return qtyFromMode(line.qtyMode, line.soldDozen, line.soldEach, UNITS_PER_DOZEN);
+  return dozenToBottles(line.soldDozen);
 }
 
 export function lineReturnedEachStrict(line: SaleLine): number {
-  return qtyFromMode(line.retMode, line.retDozen, line.retEach, UNITS_PER_DOZEN);
+  return dozenToBottles(line.retDozen);
 }
 
 export function soldQtyLabel(line: SaleLine): string {
-  const total = lineSoldEach(line);
-  return formatQtyEntryLabel(line.qtyMode, line.soldDozen, line.soldEach, total);
+  return formatDozen(lineSoldEach(line));
 }
 
 export function returnedQtyLabel(line: SaleLine): string {
-  const total = lineReturnedEach(line);
-  return formatQtyEntryLabel(line.retMode, line.retDozen, line.retEach, total);
+  return formatDozen(lineReturnedEach(line));
 }
-
-export function soldEquivalentHint(line: SaleLine): string | null {
-  const total = lineSoldEach(line);
-  if (total < 1) return null;
-  return `${total} unit${total === 1 ? '' : 's'}`;
-}
-
-export function returnedEquivalentHint(line: SaleLine): string | null {
-  const total = lineReturnedEach(line);
-  if (total < 1) return null;
-  return `${total} bottle${total === 1 ? '' : 's'}`;
-}
-
-export { formatEachBreakdown, parseQtyField, toEach };

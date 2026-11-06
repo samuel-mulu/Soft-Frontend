@@ -22,8 +22,8 @@ describe('portalMoneyStatus', () => {
 
 describe('portalBottleMovementLabel', () => {
   it('formats compensation', () => {
-    expect(portalBottleMovementLabel('COMPENSATION', -40).title).toContain('40');
-    expect(portalBottleMovementLabel('COMPENSATION', -40).title).toContain('compensation');
+    expect(portalBottleMovementLabel('COMPENSATION', -36).title).toContain('3 dz');
+    expect(portalBottleMovementLabel('COMPENSATION', -36).title).toContain('compensation');
   });
 });
 

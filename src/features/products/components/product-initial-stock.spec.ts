@@ -21,11 +21,10 @@ describe('product initial stock', () => {
       ...defaultInitialStockFields(),
       enableInitialStock: true,
       receiveMode: 'FROM_EXISTING_EMPTIES' as const,
-      qtyMode: 'each' as const,
-      each: '1000',
+      dozen: '100',
     };
     const payload = buildProductCreateStockPayload(f, true);
-    expect(payload.initialFromExistingEmpties).toBe(1000);
+    expect(payload.initialFromExistingEmpties).toBe(1200);
     expect(payload.initialQuantity).toBeUndefined();
   });
 
@@ -34,11 +33,10 @@ describe('product initial stock', () => {
       ...defaultInitialStockFields(),
       enableInitialStock: true,
       receiveMode: 'WITH_BOTTLES' as const,
-      qtyMode: 'each' as const,
-      each: '2000',
+      dozen: '150.5',
     };
     const payload = buildProductCreateStockPayload(f, true);
-    expect(payload.initialQuantity).toBe(2000);
+    expect(payload.initialQuantity).toBe(1806);
     expect(payload.initialFromExistingEmpties).toBeUndefined();
   });
 
@@ -47,14 +45,12 @@ describe('product initial stock', () => {
       ...defaultInitialStockFields(),
       enableInitialStock: true,
       receiveMode: 'MIXED_SOURCE' as const,
-      mixedFromMode: 'each' as const,
-      mixedFromEach: '1000',
-      mixedSupMode: 'each' as const,
-      mixedSupEach: '2000',
+      mixedFromDozen: '100',
+      mixedSupDozen: '150',
     };
     const payload = buildProductCreateStockPayload(f, true);
-    expect(payload.initialFromExistingEmpties).toBe(1000);
-    expect(payload.initialQuantity).toBe(2000);
+    expect(payload.initialFromExistingEmpties).toBe(1200);
+    expect(payload.initialQuantity).toBe(1800);
   });
 
   it('allows a blank edit quantity so product details can save without a receive', () => {
@@ -62,8 +58,7 @@ describe('product initial stock', () => {
       ...defaultInitialStockFields(),
       enableInitialStock: true,
       receiveMode: 'WITH_BOTTLES' as const,
-      qtyMode: 'each' as const,
-      each: '',
+      dozen: '',
     };
     expect(validateInitialStock(f, true, 0, { allowZero: true })).toBeNull();
     expect(buildProductCreateStockPayload(f, true)).toEqual({});
@@ -74,12 +69,20 @@ describe('product initial stock', () => {
       ...defaultInitialStockFields(),
       enableInitialStock: true,
       receiveMode: 'MIXED_SOURCE' as const,
-      mixedFromMode: 'each' as const,
-      mixedFromEach: '1000',
-      mixedSupMode: 'each' as const,
-      mixedSupEach: '2000',
+      mixedFromDozen: '100',
+      mixedSupDozen: '150',
     };
     expect(validateInitialStock(f, true, 3000)).toBeNull();
     expect(validateInitialStock(f, true, 500)).toMatch(/Not enough empty/);
+  });
+
+  it('rejects quantities that are not half-dozen steps', () => {
+    const f = {
+      ...defaultInitialStockFields(),
+      enableInitialStock: true,
+      receiveMode: 'WITH_BOTTLES' as const,
+      dozen: '1.3',
+    };
+    expect(validateInitialStock(f, true, 0)).toMatch(/half dozens/);
   });
 });

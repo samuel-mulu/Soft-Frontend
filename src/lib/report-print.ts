@@ -1,3 +1,4 @@
+import { dozenNumber, formatDozen, formatSignedDozen } from '@/lib/pack-quantity';
 import { amount } from '@/lib/api';
 import { getBusinessName, BRAND_MARK } from '@/lib/brand';
 
@@ -38,8 +39,7 @@ function moneyPrint(v: string | number | undefined | null) {
 
 function bottlePrint(delta: number | null, type: string | null) {
   if (delta == null || !type) return '—';
-  const sign = delta > 0 ? '+' : '';
-  return `${sign}${delta} ${type}`;
+  return `${formatSignedDozen(delta)} ${type}`;
 }
 
 function viewTitle(view: ReportViewTab) {
@@ -65,16 +65,16 @@ function buildReportHtml(data: ReportPrintData, autoPrint: boolean) {
     data.view === 'payment'
       ? '<tr><th>Date</th><th>Customer</th><th>Detail</th><th>Received</th><th>Credited</th></tr>'
       : data.view === 'bottle'
-        ? '<tr><th>Date</th><th>Customer</th><th>Detail</th><th>Bottles</th></tr>'
-        : '<tr><th>Date</th><th>Customer</th><th>Detail</th><th>Received</th><th>Credited</th><th>Bottles</th></tr>';
+        ? '<tr><th>Date</th><th>Customer</th><th>Detail</th><th>Bottles (dz)</th></tr>'
+        : '<tr><th>Date</th><th>Customer</th><th>Detail</th><th>Received</th><th>Credited</th><th>Bottles (dz)</th></tr>';
   const colSpan = data.view === 'summary' ? 6 : 5;
 
   const metrics =
     data.view === 'payment'
       ? `<div class="metrics"><div class="metric"><label>Received</label><strong>${moneyPrint(data.cashReceived)}</strong></div><div class="metric"><label>Credit (sales)</label><strong>${moneyPrint(data.credited)}</strong></div><div class="metric"><label>Rows</label><strong>${data.lines.length}</strong></div></div>`
       : data.view === 'bottle'
-        ? `<div class="metrics"><div class="metric"><label>Bottles out</label><strong>+${data.bottlesOut}</strong></div><div class="metric"><label>Bottles in</label><strong>−${data.bottlesIn}</strong></div><div class="metric"><label>Rows</label><strong>${data.lines.length}</strong></div></div>`
-        : `<div class="metrics"><div class="metric"><label>Sales</label><strong>${moneyPrint(data.salesRevenue)}</strong></div><div class="metric"><label>Received</label><strong>${moneyPrint(data.cashReceived)}</strong></div><div class="metric"><label>Credit (sales)</label><strong>${moneyPrint(data.credited)}</strong></div><div class="metric"><label>Bottles out / in</label><strong>+${data.bottlesOut} / −${data.bottlesIn}</strong></div><div class="metric"><label>Expenses</label><strong>${moneyPrint(data.expenses)}</strong></div><div class="metric"><label>Net profit (est.)</label><strong>${moneyPrint(data.estimatedNetProfit)}</strong></div></div>`;
+        ? `<div class="metrics"><div class="metric"><label>Bottles out</label><strong>+${formatDozen(data.bottlesOut)}</strong></div><div class="metric"><label>Bottles in</label><strong>−${formatDozen(data.bottlesIn)}</strong></div><div class="metric"><label>Rows</label><strong>${data.lines.length}</strong></div></div>`
+        : `<div class="metrics"><div class="metric"><label>Sales</label><strong>${moneyPrint(data.salesRevenue)}</strong></div><div class="metric"><label>Received</label><strong>${moneyPrint(data.cashReceived)}</strong></div><div class="metric"><label>Credit (sales)</label><strong>${moneyPrint(data.credited)}</strong></div><div class="metric"><label>Bottles out / in</label><strong>+${dozenNumber(data.bottlesOut)} / −${dozenNumber(data.bottlesIn)} dz</strong></div><div class="metric"><label>Expenses</label><strong>${moneyPrint(data.expenses)}</strong></div><div class="metric"><label>Net profit (est.)</label><strong>${moneyPrint(data.estimatedNetProfit)}</strong></div></div>`;
 
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Report ${data.from}${data.from !== data.to ? ` – ${data.to}` : ''}</title>
 <style>

@@ -4,13 +4,11 @@ import {
   BALANCE_COLORS,
   balanceTone,
   formatDisplayBottle,
-  formatDisplayBottleDozenEach,
   formatDisplayMoney,
   toDisplayBottle,
   toDisplayMoney,
   type BalanceTone,
 } from '@/lib/customer-balance';
-import { BottleDisplayToggle, useBottleDisplayMode } from '@/components/bottle-display-mode';
 
 const toneClass: Record<BalanceTone, string> = {
   danger: 'balance-danger',
@@ -83,20 +81,13 @@ export function BottleBalance({
   internal,
   size = 'md',
   suffix,
-  displayMode: displayModeProp,
 }: {
   internal: number;
   size?: Size;
   suffix?: string;
-  displayMode?: 'each' | 'dozenEach';
 }) {
-  const { mode: ctxMode } = useBottleDisplayMode();
-  const mode = displayModeProp ?? ctxMode;
   const display = toDisplayBottle(internal);
-  const formatted =
-    mode === 'dozenEach'
-      ? formatDisplayBottleDozenEach(display, suffix)
-      : formatDisplayBottle(display, suffix);
+  const formatted = formatDisplayBottle(display, suffix);
   return (
     <BalanceDisplay
       display={display}
@@ -112,22 +103,17 @@ export function BottleBalance({
 export function BottleBalanceList({
   rows,
   bottleName,
-  showToggle,
 }: {
   rows: { bottleTypeId: string; outstanding: number | unknown }[];
   bottleName: (id: string) => string;
+  /** @deprecated display is always in dozens; kept for call-site compatibility. */
   showToggle?: boolean;
 }) {
   if (!rows?.length) {
-    return <span className="balance-neutral font-bold text-sm tabular-nums">0</span>;
+    return <span className="balance-neutral font-bold text-sm tabular-nums">0 dz</span>;
   }
   return (
     <div className="flex flex-col gap-1.5 min-w-[120px]">
-      {showToggle && (
-        <div className="mb-0.5">
-          <BottleDisplayToggle compact />
-        </div>
-      )}
       {rows.map((b) => (
         <div key={b.bottleTypeId} className="text-sm leading-tight flex items-baseline gap-1.5 flex-wrap">
           <BottleBalance internal={Number(b.outstanding || 0)} size="sm" />
@@ -165,8 +151,7 @@ export function CustomerBalanceSummary({
       {(bottleRows.length > 0 || (projectedBottleRows && projectedBottleRows.length > 0)) && (
         <div className="fs-section-surface p-4">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <p className="fs-label mb-0">Bottle balance</p>
-            <BottleDisplayToggle compact />
+            <p className="fs-label mb-0">Bottle balance (dozen)</p>
           </div>
           <BottleBalanceList rows={bottleRows} bottleName={bottleName} />
           {projectedBottleRows && projectedBottleRows.length > 0 && (

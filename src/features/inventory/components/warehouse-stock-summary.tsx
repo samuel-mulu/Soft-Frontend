@@ -7,6 +7,7 @@ import { DataLoadSkeleton } from '@/components/ui/skeleton';
 import { showBlockingError, showErrorBanner } from '@/lib/table-query-state';
 import { QueryRefreshButton } from '@/components/shared/query-refresh-button';
 import { queryKeys } from '@/lib/query-keys';
+import { formatDozen } from '@/lib/pack-quantity';
 
 type R = Record<string, unknown>;
 const n = (v: unknown) => Number(v || 0);
@@ -36,17 +37,17 @@ export function WarehouseStockSummary() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
             <div className="rounded-xl border border-border bg-muted/50 p-4">
               <p className="label mb-1">Empty bottles</p>
-              <p className="text-2xl font-extrabold text-primary tabular-nums">{n(totals.empty)}</p>
+              <p className="text-2xl font-extrabold text-primary tabular-nums">{formatDozen(n(totals.empty))}</p>
               <p className="text-xs muted mt-1">Warehouse empties ready to fill</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/50 p-4">
               <p className="label mb-1">Full drinks</p>
-              <p className="text-2xl font-extrabold tabular-nums">{n(totals.fullDrinks)}</p>
+              <p className="text-2xl font-extrabold tabular-nums">{formatDozen(n(totals.fullDrinks))}</p>
               <p className="text-xs muted mt-1">Sellable product on hand</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/50 p-4">
               <p className="label mb-1">Damaged</p>
-              <p className="text-2xl font-extrabold tabular-nums">{n(totals.damaged)}</p>
+              <p className="text-2xl font-extrabold tabular-nums">{formatDozen(n(totals.damaged))}</p>
               <p className="text-xs muted mt-1">Broken / write-off stock</p>
             </div>
           </div>
@@ -78,9 +79,9 @@ export function WarehouseStockSummary() {
                           <span className="text-xs muted ml-1">{String(r.capacityLabel)}</span>
                         ) : null}
                       </td>
-                      <td className="font-extrabold text-primary tabular-nums">{n(r.empty)}</td>
-                      <td className="font-semibold tabular-nums">{n(r.fullDrinks)}</td>
-                      <td className="tabular-nums">{n(r.damaged)}</td>
+                      <td className="font-extrabold text-primary tabular-nums">{formatDozen(n(r.empty))}</td>
+                      <td className="font-semibold tabular-nums">{formatDozen(n(r.fullDrinks))}</td>
+                      <td className="tabular-nums">{formatDozen(n(r.damaged))}</td>
                     </tr>
                   ))
                 )}
@@ -94,7 +95,7 @@ export function WarehouseStockSummary() {
               <thead>
                 <tr>
                   <th>Product</th>
-                  <th>In stock</th>
+                  <th>In stock (dz)</th>
                 </tr>
               </thead>
               <tbody>
@@ -109,7 +110,7 @@ export function WarehouseStockSummary() {
                     {fullProducts.map((p) => (
                       <tr key={String(p.productId)}>
                         <td>{String(p.name)}</td>
-                        <td className="font-extrabold text-primary tabular-nums">{n(p.quantity)}</td>
+                        <td className="font-extrabold text-primary tabular-nums">{formatDozen(n(p.quantity))}</td>
                       </tr>
                     ))}
                     {nonReturnable.map((p) => (
@@ -118,7 +119,7 @@ export function WarehouseStockSummary() {
                           {String(p.name)}{' '}
                           <span className="text-xs muted">(non-returnable)</span>
                         </td>
-                        <td className="font-extrabold tabular-nums">{n(p.quantity)}</td>
+                        <td className="font-extrabold tabular-nums">{formatDozen(n(p.quantity))}</td>
                       </tr>
                     ))}
                   </>

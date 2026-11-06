@@ -1,10 +1,11 @@
-import { formatSignedDozenEach } from './pack-quantity';
+import { dozenNumber, formatSignedDozen } from './pack-quantity';
 
 /**
  * FlowStock display convention (owner view).
  * Internal ledger: moneyOutstanding = sales - payments (>0 = customer owes).
  * Internal bottles: sum(delta) (>0 = empties with customer).
  * Display: negate once — negative RED = owes, positive GREEN = credit/surplus.
+ * Bottles are always shown in dozens (internal values are single bottles).
  */
 
 export type BalanceTone = 'danger' | 'success' | 'neutral';
@@ -49,16 +50,9 @@ export function formatDisplayMoney(display: number): string {
   return `${formatSignedNumber(display, 2)} ETB`;
 }
 
+/** Signed bottle balance in dozens, e.g. "−2.5 dz". `display` is in single bottles. */
 export function formatDisplayBottle(display: number, suffix = ''): string {
-  if (Math.abs(display) < 0.001) return `0${suffix ? ` ${suffix}` : ''}`.trim();
-  const core = formatSignedNumber(display, 0);
-  return suffix ? `${core} ${suffix}` : core;
-}
-
-/** Display-only: dozen + each breakdown (display is customer-facing, already sign-flipped). */
-export function formatDisplayBottleDozenEach(display: number, suffix = ''): string {
-  if (Math.abs(display) < 0.001) return `0${suffix ? ` ${suffix}` : ''}`.trim();
-  const core = formatSignedDozenEach(display);
+  const core = formatSignedDozen(display);
   return suffix ? `${core} ${suffix}` : core;
 }
 
@@ -88,7 +82,7 @@ function absMoney(display: number): string {
 }
 
 function absBottles(display: number): string {
-  return String(Math.round(Math.abs(display)));
+  return `${dozenNumber(display)} dz`;
 }
 
 /**
@@ -136,8 +130,8 @@ export function presentCustomerBalance(
       formatted,
       label:
         viewer === 'customer'
-          ? `You need to return ${qty} bottles`
-          : `Customer owes ${qty} bottles`,
+          ? `You need to return ${qty}`
+          : `Customer owes ${qty}`,
     };
   }
   return {
@@ -146,8 +140,8 @@ export function presentCustomerBalance(
     formatted,
     label:
       viewer === 'customer'
-        ? `You have ${qty} bottles credit`
-        : `Customer has ${qty} bottles credit`,
+        ? `You have ${qty} credit`
+        : `Customer has ${qty} credit`,
   };
 }
 
@@ -160,7 +154,7 @@ export function projectDisplayMoney(
   return -(internalMoneyBefore + saleTotal - paymentReceived);
 }
 
-/** Project bottle balance for one type after issue/return counts (in each). */
+/** Project bottle balance for one type after issue/return counts (single bottles). */
 export function projectDisplayBottle(
   internalBefore: number,
   issued: number,

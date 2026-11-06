@@ -20,7 +20,7 @@ import {
 } from '@/lib/sale-receipt';
 import { getBusinessName } from '@/lib/brand';
 import { presentCustomerBalance, toDisplayBottle } from '@/lib/customer-balance';
-import { formatEachBreakdown } from '@/lib/pack-quantity';
+import { formatDozen, isValidDozenField, perDozenTotal } from '@/lib/pack-quantity';
 import { CustomerBalanceSummary } from '@/components/balance-display';
 import { SaleItemCard } from '@/features/sales/components/sale-item-card';
 import { EntityCombobox } from '@/features/sales/components/entity-combobox';
@@ -131,7 +131,7 @@ export function SaleForm() {
   const active = products.filter((p: R) => p.active);
   const lineTotal = (line: SaleLine) => {
     const p = active.find((pr: R) => pr.id === line.productId);
-    return n(p?.sellingPrice) * lineSoldEach(line);
+    return perDozenTotal(n(p?.sellingPrice), lineSoldEach(line));
   };
   const linePaidAmt = (line: SaleLine) =>
     paymentMode === 'detail' ? n(line.linePaid ?? lineTotal(line)) : 0;
@@ -214,17 +214,13 @@ export function SaleForm() {
   function saleQtyTouched(patch: Partial<SaleLine>) {
     return (
       patch.productId !== undefined ||
-      patch.qtyMode !== undefined ||
-      patch.soldDozen !== undefined ||
-      patch.soldEach !== undefined
+      patch.soldDozen !== undefined
     );
   }
   function applyLinePatch(line: SaleLine, patch: Partial<SaleLine>): SaleLine {
     let next = { ...line, ...patch };
-    if (patch.qtyMode !== undefined && !next.retEdited) next.retMode = patch.qtyMode;
-    if (customerId && saleQtyTouched(patch) && !next.retEdited) next = { ...next, retDozen: '', retEach: '' };
-    if (patch.productId !== undefined && !next.retEdited)
-      next = { ...next, retDozen: '', retEach: '', retMode: next.qtyMode };
+    if (customerId && saleQtyTouched(patch) && !next.retEdited) next = { ...next, retDozen: '' };
+    if (patch.productId !== undefined && !next.retEdited) next = { ...next, retDozen: '' };
     if (paymentMode === 'detail') {
       if (saleQtyTouched(patch) && !next.linePaidEdited) next.linePaid = String(lineTotal(next));
       if (patch.productId !== undefined && !next.linePaidEdited) {
@@ -373,6 +369,12 @@ export function SaleForm() {
 
   async function finalize(printAfter: boolean) {
     clearSaleErrors();
+    if (items.some((x) => !isValidDozenField(x.soldDozen) || !isValidDozenField(x.retDozen))) {
+      const msg = 'Quantities must be whole or half dozens (e.g. 1, 1.5, 2).';
+      setSaleError(msg);
+      toast.error(msg);
+      return;
+    }
     if (
       items.some((x) => !x.productId || lineSoldEach(x) < 1) ||
       new Set(items.map((x) => x.productId)).size !== items.length
@@ -429,7 +431,7 @@ export function SaleForm() {
       active as { id: string; name: string }[],
     );
     if (stockProblems.length) {
-      const msg = stockProblems.map((s) => `${s.name}: only ${s.have} in stock (need ${s.need})`).join(' · ');
+      const msg = stockProblems.map((s) => `${s.name}: only ${formatDozen(s.have)} in stock (need ${formatDozen(s.need)})`).join(' · ');
       setSaleError(msg);
       setFieldErrors({ ...EMPTY_SALE_FIELDS, qty: stockProblems.map((s) => s.index) });
       toast.error(msg);
@@ -548,7 +550,7 @@ export function SaleForm() {
                     setPayment('');
                     setAccountOpen(false);
                     setItems((a) =>
-                      a.map((x) => ({ ...x, retDozen: '', retEach: '', retEdited: false, retMode: x.qtyMode })),
+                      a.map((x) => ({ ...x, retDozen: '', retEdited: false })),
                     );
                   }}
                   options={registeredCustomerOptions(customers, true)}
@@ -656,7 +658,7 @@ export function SaleForm() {
                     <span className="min-w-0 truncate font-semibold">
                       {x.name}{' '}
                       <span className="font-normal muted">
-                        {x.qtyLabel} ({x.quantity} units)
+                        {x.qtyLabel}
                       </span>
                     </span>
                     <span className="fs-amount shrink-0 font-semibold">{money(x.line)}</span>
