@@ -9,6 +9,7 @@ import {
   toDisplayMoney,
   type BalanceTone,
 } from '@/lib/customer-balance';
+import { usePackSizes } from '@/hooks/use-pack-sizes';
 
 const toneClass: Record<BalanceTone, string> = {
   danger: 'balance-danger',
@@ -81,13 +82,16 @@ export function BottleBalance({
   internal,
   size = 'md',
   suffix,
+  perDozen,
 }: {
   internal: number;
   size?: Size;
   suffix?: string;
+  /** Bottles per dozen for this bottle type (default 12). */
+  perDozen?: number;
 }) {
   const display = toDisplayBottle(internal);
-  const formatted = formatDisplayBottle(display, suffix);
+  const formatted = formatDisplayBottle(display, suffix, perDozen);
   return (
     <BalanceDisplay
       display={display}
@@ -109,6 +113,7 @@ export function BottleBalanceList({
   /** @deprecated display is always in dozens; kept for call-site compatibility. */
   showToggle?: boolean;
 }) {
+  const sizes = usePackSizes();
   if (!rows?.length) {
     return <span className="balance-neutral font-bold text-sm tabular-nums">0 dz</span>;
   }
@@ -116,7 +121,7 @@ export function BottleBalanceList({
     <div className="flex flex-col gap-1.5 min-w-[120px]">
       {rows.map((b) => (
         <div key={b.bottleTypeId} className="text-sm leading-tight flex items-baseline gap-1.5 flex-wrap">
-          <BottleBalance internal={Number(b.outstanding || 0)} size="sm" />
+          <BottleBalance internal={Number(b.outstanding || 0)} size="sm" perDozen={sizes.bottle(b.bottleTypeId)} />
           <span className="font-medium text-muted-foreground">{bottleName(b.bottleTypeId)}</span>
         </div>
       ))}

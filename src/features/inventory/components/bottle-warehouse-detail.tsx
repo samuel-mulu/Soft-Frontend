@@ -18,7 +18,14 @@ import { getUser, money, patch, post } from '@/lib/api';
 import { LoadErrorBanner } from '@/components/shared/load-error';
 import { DataLoadSkeleton } from '@/components/ui/skeleton';
 import { QuantityEntry } from '@/components/quantity-entry';
-import { bottlesToDozen, dozenNumber, formatDozen, safeDozenToBottles } from '@/lib/pack-quantity';
+import {
+  bottlesToDozen,
+  dozenNumber,
+  formatDozen,
+  isValidPackSize,
+  packSizeOrDefault,
+  safeDozenToBottles,
+} from '@/lib/pack-quantity';
 import { invalidateBalanceQueries } from '@/lib/query-keys';
 import { Button } from '@/components/ui/button';
 import {
@@ -58,6 +65,7 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
   const [customerId, setCustomerId] = useState('');
   const [compCustomerId, setCompCustomerId] = useState('');
   const [replacementPrice, setReplacementPrice] = useState('');
+  const [bottlesPerDozen, setBottlesPerDozen] = useState('');
   const [breakKind, setBreakKind] = useState<'EMPTY' | 'FULL' | 'CUSTOMER_BROKEN'>('EMPTY');
   const [reconcileEmpty, setReconcileEmpty] = useState('');
   const [reconcileDamaged, setReconcileDamaged] = useState('');
@@ -71,6 +79,8 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
   );
 
   const bt = data?.bottleType as R | undefined;
+  /** Bottles per dozen for this bottle type (all its products share it). */
+  const pd = packSizeOrDefault(bt?.bottlesPerDozen);
   const linkedProducts = (products as R[]).filter(
     (p) => p.bottleTypeId === bottleTypeId && p.packagingKind !== 'NONE',
   );
@@ -99,7 +109,7 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
 
   /** Dozen entry -> bottle count for the API (always a multiple of 6). */
   function packBody(extra: R = {}) {
-    return { ...extra, quantity: safeDozenToBottles(dozen) };
+    return { ...extra, quantity: safeDozenToBottles(dozen, pd) };
   }
 
   if (isLoading && !data) return <DataLoadSkeleton variant="table" />;
@@ -132,7 +142,7 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
           {fullByProduct.map((row) => (
             <p key={String(row.productId)} className="flex justify-between text-sm">
               <span>{String(row.name)}</span>
-              <span className="font-bold text-primary tabular-nums">{formatDozen(n(row.quantity))}</span>
+              <span className="font-bold text-primary tabular-nums">{formatDozen(n(row.quantity), pd)}</span>
             </p>
           ))}
           {!fullByProduct.length && <p className="muted text-sm">No linked products.</p>}
@@ -141,19 +151,22 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
           <h2 className="font-extrabold text-sm">Warehouse bottles</h2>
           <p className="flex justify-between text-sm">
             <span>Empty (usable)</span>
-            <span className="font-bold text-primary">{formatDozen(empty)}</span>
+            <span className="font-bold text-primary">{formatDozen(empty, pd)}</span>
           </p>
           <p className="flex justify-between text-sm">
             <span>Damaged</span>
-            <span className="font-bold">{formatDozen(damaged)}</span>
+            <span className="font-bold">{formatDozen(damaged, pd)}</span>
           </p>
           <p className="flex justify-between text-sm muted">
             <span>Customer obligations (ledger)</span>
-            <span>{formatDozen(obligations)} internal · display −{dozenNumber(obligations)} dz RED typical</span>
+            <span>{formatDozen(obligations, pd)} internal · display −{dozenNumber(obligations, pd)} dz RED typical</span>
           </p>
           <p className="flex justify-between text-sm muted">
             <span>Customer credits (ledger)</span>
-            <span>{formatDozen(credits)} internal · display +{dozenNumber(credits)} dz GREEN</span>
+            <span>{formatDozen(credits, pd)} internal · display +{dozenNumber(credits, pd)} dz GREEN</span>
+          </p>
+          <p className="text-sm">
+            Dozen size: <b>1 dz = {pd} bottles</b>
           </p>
           <p className="text-sm">
             Replacement price:{' '}
@@ -171,7 +184,7 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
             ['breakage', 'Record breakage'],
             ['compensation', 'Bottle compensation'],
             ['reconcile', 'Physical reconcile'],
-            ['price', 'Replacement price'],
+            ['price', 'Bottle settings'],
           ].map(([id, label]) => (
             <Button
               key={id}
@@ -195,7 +208,7 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
           {((data?.recentMovements as R[]) || []).map((m) => (
             <p key={String(m.id)} className="border-b border-border/60 py-1">
               {String(m.reason)} · {n(m.delta) > 0 ? '+' : ''}
-              {formatDozen(n(m.delta))} ·{' '}
+              {formatDozen(n(m.delta), pd)} ·{' '}
               {String((m.product as R | undefined)?.name || (m.bottleType as R | undefined)?.name || '')}
             </p>
           ))}
@@ -207,7 +220,7 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
           <DialogHeader>
             <DialogTitle>Receive empty bottles</DialogTitle>
           </DialogHeader>
-          <QuantityEntry fieldClass="field" value={dozen} onChange={setDozen} />
+          <QuantityEntry fieldClass="field" value={dozen} onChange={setDozen} perDozen={pd} />
           <Label>Note</Label>
           <Input value={note} onChange={(e) => setNote(e.target.value)} />
           <DialogFooter>
@@ -244,7 +257,7 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
             ))}
           </select>
           {receiveMode === 'FROM_EXISTING_EMPTIES' && (
-            <p className="text-xs muted mb-2">Available empty: {formatDozen(empty)}</p>
+            <p className="text-xs muted mb-2">Available empty: {formatDozen(empty, pd)}</p>
           )}
           {(receiveMode === 'WITH_BOTTLES' || receiveMode === 'MIXED_SOURCE') && (
             <>
@@ -264,18 +277,18 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
           )}
           {receiveMode === 'MIXED_SOURCE' ? (
             <div className="space-y-3">
-              <p className="text-xs muted">Empty on hand: {formatDozen(empty)}. Total full stock increases by both portions combined.</p>
+              <p className="text-xs muted">Empty on hand: {formatDozen(empty, pd)}. Total full stock increases by both portions combined.</p>
               <div>
                 <Label>From warehouse empties (dozen)</Label>
-                <QuantityEntry fieldClass="field" value={mixedFromDozen} onChange={setMixedFromDozen} />
+                <QuantityEntry fieldClass="field" value={mixedFromDozen} onChange={setMixedFromDozen} perDozen={pd} />
               </div>
               <div>
                 <Label>With supplier bottles (dozen)</Label>
-                <QuantityEntry fieldClass="field" value={mixedSupDozen} onChange={setMixedSupDozen} />
+                <QuantityEntry fieldClass="field" value={mixedSupDozen} onChange={setMixedSupDozen} perDozen={pd} />
               </div>
             </div>
           ) : (
-            <QuantityEntry fieldClass="field" value={dozen} onChange={setDozen} />
+            <QuantityEntry fieldClass="field" value={dozen} onChange={setDozen} perDozen={pd} />
           )}
           <DialogFooter>
             <Button
@@ -287,11 +300,11 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
                     mode: receiveMode,
                     note,
                     ...(supplierId ? { supplierId, unitCost: unitCost || undefined } : {}),
-                    ...(safeDozenToBottles(mixedFromDozen) > 0
-                      ? { fromExisting: { quantity: safeDozenToBottles(mixedFromDozen) } }
+                    ...(safeDozenToBottles(mixedFromDozen, pd) > 0
+                      ? { fromExisting: { quantity: safeDozenToBottles(mixedFromDozen, pd) } }
                       : {}),
-                    ...(safeDozenToBottles(mixedSupDozen) > 0
-                      ? { withSupplier: { quantity: safeDozenToBottles(mixedSupDozen) } }
+                    ...(safeDozenToBottles(mixedSupDozen, pd) > 0
+                      ? { withSupplier: { quantity: safeDozenToBottles(mixedSupDozen, pd) } }
                       : {}),
                   });
                   return;
@@ -316,7 +329,7 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
           <DialogHeader>
             <DialogTitle>Convert empties to full stock</DialogTitle>
           </DialogHeader>
-          <p className="text-xs muted">Empty on hand: {formatDozen(empty)}</p>
+          <p className="text-xs muted">Empty on hand: {formatDozen(empty, pd)}</p>
           <Label>Product</Label>
           <select className="field w-full" value={productId} onChange={(e) => setProductId(e.target.value)}>
             <option value="">Select</option>
@@ -326,7 +339,7 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
               </option>
             ))}
           </select>
-          <QuantityEntry fieldClass="field" value={dozen} onChange={setDozen} />
+          <QuantityEntry fieldClass="field" value={dozen} onChange={setDozen} perDozen={pd} />
           <DialogFooter>
             <Button disabled={busy || !productId} onClick={() => submit('/inventory/convert-empties-to-full', { productId, note, ...packBody() })}>
               Convert
@@ -367,7 +380,7 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
               </option>
             ))}
           </select>
-          <QuantityEntry fieldClass="field" value={dozen} onChange={setDozen} />
+          <QuantityEntry fieldClass="field" value={dozen} onChange={setDozen} perDozen={pd} />
           <Label>Reason (required audit note)</Label>
           <Input value={note} onChange={(e) => setNote(e.target.value)} />
           {breakKind === 'CUSTOMER_BROKEN' && owner && (
@@ -447,9 +460,9 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
           </DialogHeader>
           <p className="text-xs muted mb-2">Adjusts warehouse records only — not customer ledger.</p>
           <Label>Counted empty (dozen)</Label>
-          <QuantityEntry fieldClass="field" value={reconcileEmpty} onChange={setReconcileEmpty} />
+          <QuantityEntry fieldClass="field" value={reconcileEmpty} onChange={setReconcileEmpty} perDozen={pd} />
           <Label>Counted damaged (dozen)</Label>
-          <QuantityEntry fieldClass="field" value={reconcileDamaged} onChange={setReconcileDamaged} />
+          <QuantityEntry fieldClass="field" value={reconcileDamaged} onChange={setReconcileDamaged} perDozen={pd} />
           {fullByProduct.map((row) => (
             <div key={String(row.productId)}>
               <Label>{String(row.name)} full count (dozen)</Label>
@@ -459,7 +472,7 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
                 min={0}
                 step={0.5}
                 data-product={row.productId}
-                defaultValue={String(bottlesToDozen(n(row.quantity)))}
+                defaultValue={String(bottlesToDozen(n(row.quantity), pd))}
               />
             </div>
           ))}
@@ -473,12 +486,12 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
                   const el = document.querySelector(
                     `input[data-product="${row.productId}"]`,
                   ) as HTMLInputElement;
-                  return { productId: String(row.productId), quantity: safeDozenToBottles(el?.value) };
+                  return { productId: String(row.productId), quantity: safeDozenToBottles(el?.value, pd) };
                 });
                 submit('/inventory/reconcile', {
                   bottleTypeId,
-                  countedEmpty: safeDozenToBottles(reconcileEmpty),
-                  countedDamaged: safeDozenToBottles(reconcileDamaged),
+                  countedEmpty: safeDozenToBottles(reconcileEmpty, pd),
+                  countedDamaged: safeDozenToBottles(reconcileDamaged, pd),
                   fullCounts,
                   note,
                 });
@@ -493,17 +506,35 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
       <Dialog open={modal === 'price'} onOpenChange={() => setModal(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Replacement price (per dozen)</DialogTitle>
+            <DialogTitle>Bottle settings</DialogTitle>
           </DialogHeader>
+          <Label>Bottles per dozen (crate size)</Label>
+          <Input
+            type="number"
+            min={2}
+            step={2}
+            value={bottlesPerDozen}
+            onChange={(e) => setBottlesPerDozen(e.target.value)}
+            placeholder={String(pd)}
+          />
+          <p className="text-xs muted">
+            Currently 1 dz = {pd} bottles. All products using this bottle follow this size.
+          </p>
+          <Label>Replacement price (ETB per dozen)</Label>
           <Input value={replacementPrice} onChange={(e) => setReplacementPrice(e.target.value)} placeholder="ETB per dozen" />
           <DialogFooter>
             <Button
               disabled={busy}
               onClick={async () => {
+                if (bottlesPerDozen.trim() && !isValidPackSize(Number(bottlesPerDozen))) {
+                  toast.error('Bottles per dozen must be an even whole number (e.g. 12 or 24)');
+                  return;
+                }
                 setBusy(true);
                 try {
                   await patch(`/bottle-types/${bottleTypeId}`, {
-                    replacementPrice: replacementPrice || '0',
+                    ...(replacementPrice.trim() ? { replacementPrice: replacementPrice.trim() } : {}),
+                    ...(bottlesPerDozen.trim() ? { bottlesPerDozen: Number(bottlesPerDozen) } : {}),
                   });
                   toast.success('Updated');
                   await invalidateBalanceQueries(qc);
@@ -515,7 +546,7 @@ export function BottleWarehouseDetail({ bottleTypeId }: { bottleTypeId: string }
                 }
               }}
             >
-              Save price
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>

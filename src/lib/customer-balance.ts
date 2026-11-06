@@ -1,4 +1,4 @@
-import { dozenNumber, formatSignedDozen } from './pack-quantity';
+import { DEFAULT_PACK_SIZE, bottlesToDozen, dozenNumber, formatSignedDozen } from './pack-quantity';
 
 /**
  * FlowStock display convention (owner view).
@@ -50,9 +50,9 @@ export function formatDisplayMoney(display: number): string {
   return `${formatSignedNumber(display, 2)} ETB`;
 }
 
-/** Signed bottle balance in dozens, e.g. "−2.5 dz". `display` is in single bottles. */
-export function formatDisplayBottle(display: number, suffix = ''): string {
-  const core = formatSignedDozen(display);
+/** Signed bottle balance in dozens, e.g. "−2.5 dz". `display` is in single bottles; `perDozen` is the dozen size. */
+export function formatDisplayBottle(display: number, suffix = '', perDozen = DEFAULT_PACK_SIZE): string {
+  const core = formatSignedDozen(display, perDozen);
   return suffix ? `${core} ${suffix}` : core;
 }
 
@@ -81,8 +81,8 @@ function absMoney(display: number): string {
   return formatDisplayMoney(Math.abs(display)).replace(/^[−+]/, '');
 }
 
-function absBottles(display: number): string {
-  return `${dozenNumber(display)} dz`;
+function absBottles(display: number, perDozen = DEFAULT_PACK_SIZE): string {
+  return `${dozenNumber(display, perDozen)} dz`;
 }
 
 /**
@@ -95,10 +95,13 @@ export function presentCustomerBalance(
   internal: number,
   kind: 'money' | 'bottle',
   viewer: BalanceViewer = 'staff',
+  /** Dozen size of the bottle type (bottle balances only). */
+  perDozen = DEFAULT_PACK_SIZE,
 ): PresentedBalance {
   const display = kind === 'money' ? toDisplayMoney(internal) : toDisplayBottle(internal);
   const tone = balanceTone(display);
-  const formatted = kind === 'money' ? formatDisplayMoney(display) : formatDisplayBottle(display);
+  const formatted =
+    kind === 'money' ? formatDisplayMoney(display) : formatDisplayBottle(display, '', perDozen);
 
   if (Math.abs(display) < 0.001) {
     return { display: 0, tone, formatted, label: 'Settled' };
@@ -122,7 +125,7 @@ export function presentCustomerBalance(
     };
   }
 
-  const qty = absBottles(display);
+  const qty = absBottles(display, perDozen);
   if (display < 0) {
     return {
       display,
@@ -177,42 +180,70 @@ export function mapBottleRows(
 
 /** Ledger buckets from internal bottle outstanding (see file header). */
 export type BottleLedgerTotals = {
-  /** Empties still with customers (internal positive). */
+  /** Empties still with customers (internal positive). Single bottles. */
   withCustomer: number;
+  /** Same buckets in dozens (each bottle type counted with its own dozen size). */
+  withCustomerDozen: number;
+  fromCustomerDozen: number;
+  netDozen: number;
   /** Extra returns / surplus from customers (internal negative, as positive magnitude). */
   fromCustomer: number;
   /** Net internal sum (withCustomer − fromCustomer). */
   netInternal: number;
 };
 
-export function bottleLedgerTotals(rows: { outstanding: number }[]): BottleLedgerTotals {
+type SizeOf = (bottleTypeId: string) => number;
+
+export function bottleLedgerTotals(
+  rows: { outstanding: number; bottleTypeId?: string }[],
+  sizeOf: SizeOf = () => DEFAULT_PACK_SIZE,
+): BottleLedgerTotals {
   let withCustomer = 0;
   let fromCustomer = 0;
+  let withCustomerDozen = 0;
+  let fromCustomerDozen = 0;
   for (const row of rows) {
     const internal = Number(row.outstanding || 0);
-    if (internal > 0.001) withCustomer += internal;
-    else if (internal < -0.001) fromCustomer += -internal;
+    const size = sizeOf(String(row.bottleTypeId ?? ''));
+    if (internal > 0.001) {
+      withCustomer += internal;
+      withCustomerDozen += bottlesToDozen(internal, size);
+    } else if (internal < -0.001) {
+      fromCustomer += -internal;
+      fromCustomerDozen += bottlesToDozen(-internal, size);
+    }
   }
   return {
     withCustomer,
     fromCustomer,
     netInternal: withCustomer - fromCustomer,
+    withCustomerDozen,
+    fromCustomerDozen,
+    netDozen: withCustomerDozen - fromCustomerDozen,
   };
 }
 
 export function aggregateCustomersBottleBalances(
-  customers: { bottleBalances?: { outstanding: number }[] }[],
+  customers: { bottleBalances?: { outstanding: number; bottleTypeId?: string }[] }[],
+  sizeOf: SizeOf = () => DEFAULT_PACK_SIZE,
 ): BottleLedgerTotals {
   let withCustomer = 0;
   let fromCustomer = 0;
+  let withCustomerDozen = 0;
+  let fromCustomerDozen = 0;
   for (const c of customers) {
-    const part = bottleLedgerTotals(c.bottleBalances || []);
+    const part = bottleLedgerTotals(c.bottleBalances || [], sizeOf);
     withCustomer += part.withCustomer;
     fromCustomer += part.fromCustomer;
+    withCustomerDozen += part.withCustomerDozen;
+    fromCustomerDozen += part.fromCustomerDozen;
   }
   return {
     withCustomer,
     fromCustomer,
     netInternal: withCustomer - fromCustomer,
+    withCustomerDozen,
+    fromCustomerDozen,
+    netDozen: withCustomerDozen - fromCustomerDozen,
   };
 }

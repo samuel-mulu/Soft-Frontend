@@ -1,4 +1,4 @@
-import { DOZEN_STEP_MESSAGE, dozenToBottles, formatDozen } from '@/lib/pack-quantity';
+import { DEFAULT_PACK_SIZE, DOZEN_STEP_MESSAGE, dozenToBottles, formatDozen } from '@/lib/pack-quantity';
 
 export type InitialReceiveMode = 'FROM_EXISTING_EMPTIES' | 'WITH_BOTTLES' | 'MIXED_SOURCE';
 
@@ -29,10 +29,10 @@ export const defaultInitialStockFields = (): InitialStockFields => ({
   supplierName: '',
 });
 
-/** Dozen text -> bottle count. */
-function resolveEach(dozen: string): { total: number; error?: string } {
+/** Dozen text -> bottle count for a dozen of `perDozen` bottles. */
+function resolveEach(dozen: string, perDozen: number): { total: number; error?: string } {
   try {
-    return { total: dozenToBottles(dozen) };
+    return { total: dozenToBottles(dozen, perDozen) };
   } catch {
     return { total: 0, error: DOZEN_STEP_MESSAGE };
   }
@@ -41,6 +41,7 @@ function resolveEach(dozen: string): { total: number; error?: string } {
 export function computeInitialStockQuantities(
   fields: InitialStockFields,
   returnable: boolean,
+  perDozen = DEFAULT_PACK_SIZE,
 ): {
   fromExisting: number;
   withSupplier: number;
@@ -51,7 +52,7 @@ export function computeInitialStockQuantities(
     return { fromExisting: 0, withSupplier: 0, totalFull: 0 };
   }
   if (!returnable) {
-    const r = resolveEach(fields.unitOnlyQty);
+    const r = resolveEach(fields.unitOnlyQty, perDozen);
     if (r.error) return { fromExisting: 0, withSupplier: 0, totalFull: 0, error: r.error };
     const q = r.total;
     if (q === 0) return { fromExisting: 0, withSupplier: 0, totalFull: 0 };
@@ -59,20 +60,20 @@ export function computeInitialStockQuantities(
   }
 
   if (fields.receiveMode === 'FROM_EXISTING_EMPTIES') {
-    const r = resolveEach(fields.dozen);
+    const r = resolveEach(fields.dozen, perDozen);
     if (r.error) return { fromExisting: 0, withSupplier: 0, totalFull: 0, error: r.error };
     if (r.total <= 0) return { fromExisting: 0, withSupplier: 0, totalFull: 0, error: 'Quantity must be greater than zero' };
     return { fromExisting: r.total, withSupplier: 0, totalFull: r.total };
   }
   if (fields.receiveMode === 'WITH_BOTTLES') {
-    const r = resolveEach(fields.dozen);
+    const r = resolveEach(fields.dozen, perDozen);
     if (r.error) return { fromExisting: 0, withSupplier: 0, totalFull: 0, error: r.error };
     if (r.total <= 0) return { fromExisting: 0, withSupplier: 0, totalFull: 0, error: 'Quantity must be greater than zero' };
     return { fromExisting: 0, withSupplier: r.total, totalFull: r.total };
   }
 
-  const fromR = resolveEach(fields.mixedFromDozen);
-  const supR = resolveEach(fields.mixedSupDozen);
+  const fromR = resolveEach(fields.mixedFromDozen, perDozen);
+  const supR = resolveEach(fields.mixedSupDozen, perDozen);
   if (fromR.error) return { fromExisting: 0, withSupplier: 0, totalFull: 0, error: fromR.error };
   if (supR.error) return { fromExisting: 0, withSupplier: 0, totalFull: 0, error: supR.error };
   if (fromR.total <= 0 && supR.total <= 0) {
@@ -89,9 +90,10 @@ export function validateInitialStock(
   fields: InitialStockFields,
   returnable: boolean,
   availableEmpty: number,
-  options?: { allowZero?: boolean },
+  options?: { allowZero?: boolean; perDozen?: number },
 ): string | null {
-  const q = computeInitialStockQuantities(fields, returnable);
+  const perDozen = options?.perDozen ?? DEFAULT_PACK_SIZE;
+  const q = computeInitialStockQuantities(fields, returnable, perDozen);
   if (q.error) {
     const zeroQty =
       q.error === 'Quantity must be greater than zero' ||
@@ -101,7 +103,7 @@ export function validateInitialStock(
   }
   if (!fields.enableInitialStock || q.totalFull === 0) return null;
   if (returnable && q.fromExisting > availableEmpty) {
-    return `Not enough empty bottles in warehouse (${formatDozen(availableEmpty)} available, ${formatDozen(q.fromExisting)} requested)`;
+    return `Not enough empty bottles in warehouse (${formatDozen(availableEmpty, perDozen)} available, ${formatDozen(q.fromExisting, perDozen)} requested)`;
   }
   if (
     returnable &&
@@ -117,6 +119,7 @@ export function validateInitialStock(
 export function buildProductCreateStockPayload(
   fields: InitialStockFields,
   returnable: boolean,
+  perDozen = DEFAULT_PACK_SIZE,
 ): {
   initialQuantity?: number;
   initialFromExistingEmpties?: number;
@@ -125,7 +128,7 @@ export function buildProductCreateStockPayload(
   stockNote?: string;
   supplierName?: string;
 } {
-  const q = computeInitialStockQuantities(fields, returnable);
+  const q = computeInitialStockQuantities(fields, returnable, perDozen);
   if (!fields.enableInitialStock || q.totalFull === 0) return {};
   const out: ReturnType<typeof buildProductCreateStockPayload> = {};
   if (q.withSupplier > 0) out.initialQuantity = q.withSupplier;

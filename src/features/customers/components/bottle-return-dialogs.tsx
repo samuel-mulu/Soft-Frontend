@@ -19,6 +19,7 @@ import { BottleBalance } from '@/components/balance-display';
 import { post, getUser } from '@/lib/api';
 import { dozenToBottles, formatDozen, projectBottleInternal } from '@/lib/pack-quantity';
 import { invalidateBalanceQueries } from '@/lib/query-keys';
+import { usePackSizes } from '@/hooks/use-pack-sizes';
 
 type BaseProps = {
   open: boolean;
@@ -40,6 +41,7 @@ export function GoodBottleReturnDialog({
   bottlesOwedInternal,
 }: BaseProps) {
   const client = useQueryClient();
+  const perDozen = usePackSizes().bottle(bottleTypeId);
   const [dozen, setDozen] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -47,11 +49,11 @@ export function GoodBottleReturnDialog({
 
   const returnQty = useMemo(() => {
     try {
-      return dozenToBottles(dozen);
+      return dozenToBottles(dozen, perDozen);
     } catch {
       return 0;
     }
-  }, [dozen]);
+  }, [dozen, perDozen]);
 
   const projected = projectBottleInternal(bottlesOwedInternal, 0, returnQty);
 
@@ -103,23 +105,23 @@ export function GoodBottleReturnDialog({
           </p>
           <div className="flex justify-between rounded-lg border border-border px-3 py-2">
             <span className="muted">Owed now (dozen)</span>
-            <BottleBalance internal={bottlesOwedInternal} size="sm" />
+            <BottleBalance internal={bottlesOwedInternal} size="sm" perDozen={perDozen} />
           </div>
           <div>
             <Label>Quantity returned in dozen (usable empties)</Label>
             <QuantityEntry
               fieldClass="field"
-              value={dozen} onChange={setDozen}
+              value={dozen} onChange={setDozen} perDozen={perDozen}
             />
           </div>
           {returnQty > 0 && (
             <div className="rounded-lg bg-muted/50 p-3 space-y-1">
               <p>
-                Returning: <b>{formatDozen(returnQty)}</b>
+                Returning: <b>{formatDozen(returnQty, perDozen)}</b>
               </p>
               <p className="flex justify-between font-semibold pt-1 border-t border-border">
                 <span>After return</span>
-                <BottleBalance internal={projected} size="sm" />
+                <BottleBalance internal={projected} size="sm" perDozen={perDozen} />
               </p>
             </div>
           )}
@@ -151,6 +153,7 @@ export function BrokenBottleReturnDialog({
   bottlesOwedInternal,
 }: BaseProps) {
   const client = useQueryClient();
+  const perDozen = usePackSizes().bottle(bottleTypeId);
   const owner = getUser()?.role === 'OWNER';
   const [dozen, setDozen] = useState('');
   const [reason, setReason] = useState('');
@@ -161,11 +164,11 @@ export function BrokenBottleReturnDialog({
 
   const qty = useMemo(() => {
     try {
-      return dozenToBottles(dozen);
+      return dozenToBottles(dozen, perDozen);
     } catch {
       return 0;
     }
-  }, [dozen]);
+  }, [dozen, perDozen]);
 
   useEffect(() => {
     if (!open) {
@@ -231,13 +234,13 @@ export function BrokenBottleReturnDialog({
           </p>
           <div className="flex justify-between rounded-lg border border-border px-3 py-2">
             <span className="muted">Bottles owed (unchanged unless waived)</span>
-            <BottleBalance internal={bottlesOwedInternal} size="sm" />
+            <BottleBalance internal={bottlesOwedInternal} size="sm" perDozen={perDozen} />
           </div>
           <div>
             <Label>Broken quantity (dozen)</Label>
             <QuantityEntry
               fieldClass="field"
-              value={dozen} onChange={setDozen}
+              value={dozen} onChange={setDozen} perDozen={perDozen}
             />
           </div>
           <div>

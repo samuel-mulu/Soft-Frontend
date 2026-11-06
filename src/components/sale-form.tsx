@@ -20,7 +20,7 @@ import {
 } from '@/lib/sale-receipt';
 import { getBusinessName } from '@/lib/brand';
 import { presentCustomerBalance, toDisplayBottle } from '@/lib/customer-balance';
-import { formatDozen, isValidDozenField, perDozenTotal } from '@/lib/pack-quantity';
+import { formatDozen, isValidDozenField, packSizeOrDefault, perDozenTotal } from '@/lib/pack-quantity';
 import { CustomerBalanceSummary } from '@/components/balance-display';
 import { SaleItemCard } from '@/features/sales/components/sale-item-card';
 import { EntityCombobox } from '@/features/sales/components/entity-combobox';
@@ -129,9 +129,16 @@ export function SaleForm() {
   const saleIdempotencyKey = useRef<string | null>(null);
 
   const active = products.filter((p: R) => p.active);
+  /** Bottles per dozen for a product (returnable products follow their bottle type). */
+  const ps = (productId: string) => {
+    const p = products.find((pr: R) => pr.id === productId) as R | undefined;
+    return packSizeOrDefault((p?.bottleType as R | undefined)?.bottlesPerDozen ?? p?.unitsPerCase);
+  };
+  const bottleSize = (bottleTypeId: string) =>
+    packSizeOrDefault((bottles.find((b: R) => b.id === bottleTypeId) as R | undefined)?.bottlesPerDozen);
   const lineTotal = (line: SaleLine) => {
     const p = active.find((pr: R) => pr.id === line.productId);
-    return perDozenTotal(n(p?.sellingPrice), lineSoldEach(line));
+    return perDozenTotal(n(p?.sellingPrice), lineSoldEach(line, ps(line.productId)), ps(line.productId));
   };
   const linePaidAmt = (line: SaleLine) =>
     paymentMode === 'detail' ? n(line.linePaid ?? lineTotal(line)) : 0;
@@ -139,13 +146,13 @@ export function SaleForm() {
     .map((line, i) => {
       const p = active.find((pr: R) => pr.id === line.productId);
       const lineAmt = lineTotal(line);
-      const each = lineSoldEach(line);
+      const each = lineSoldEach(line, ps(line.productId));
       return {
         i,
         productId: line.productId,
         name: String(p?.name || 'Product'),
         quantity: each,
-        qtyLabel: soldQtyLabel(line),
+        qtyLabel: soldQtyLabel(line, ps(line.productId)),
         line: lineAmt,
         paid: linePaidAmt(line),
         method: line.lineMethod || 'CASH',
@@ -157,7 +164,7 @@ export function SaleForm() {
   const paymentReceived = paymentMode === 'detail' ? cartLines.reduce((s, x) => s + x.paid, 0) : n(payment);
   const saleCredit = Math.max(0, paymentReceived - total);
   const remaining = Math.max(0, total - paymentReceived);
-  const returnEachOnLine = (line: SaleLine) => (customerId ? lineReturnedEach(line) : 0);
+  const returnEachOnLine = (line: SaleLine) => (customerId ? lineReturnedEach(line, ps(line.productId)) : 0);
   const selectedCustomer = customerId ? customers.find((c: R) => c.id === customerId) : null;
   const customerBottleHeld = () => {
     const map = new Map<string, number>();
@@ -176,7 +183,7 @@ export function SaleForm() {
       if (!productReturnable(p)) continue;
       const bt = p?.bottleTypeId as string | undefined;
       if (!bt) continue;
-      const each = lineSoldEach(line);
+      const each = lineSoldEach(line, ps(line.productId));
       map.set(bt, (map.get(bt) || 0) + each - returnEachOnLine(line));
     }
     return [...map.entries()].map(([bottleTypeId, outstanding]) => ({ bottleTypeId, outstanding }));
@@ -273,11 +280,12 @@ export function SaleForm() {
         const p = active.find((pr: R) => pr.id === line.productId)!;
         const lt = lineTotal(line);
         const paid = linePaidAmt(line);
-        const each = lineSoldEach(line);
+        const each = lineSoldEach(line, ps(line.productId));
         return {
           name: String(p.name),
           qty: each,
-          qtyLabel: soldQtyLabel(line),
+          perDozen: ps(line.productId),
+          qtyLabel: soldQtyLabel(line, ps(line.productId)),
           unitPrice: money(p.sellingPrice),
           lineTotal: money(lt),
           ...(paymentMode === 'detail'
@@ -295,15 +303,16 @@ export function SaleForm() {
           .flatMap((line) => {
             const p = active.find((pr: R) => pr.id === line.productId);
             if (!productReturnable(p)) return [];
-            const each = lineSoldEach(line);
+            const each = lineSoldEach(line, ps(line.productId));
             const ret = returnEachOnLine(line);
             return [
               {
                 product: String(p!.name),
                 sold: each,
-                soldLabel: soldQtyLabel(line),
+                perDozen: ps(line.productId),
+                soldLabel: soldQtyLabel(line, ps(line.productId)),
                 returned: ret,
-                returnedLabel: returnedQtyLabel(line),
+                returnedLabel: returnedQtyLabel(line, ps(line.productId)),
                 withCustomer: each - ret,
               },
             ];
@@ -320,7 +329,7 @@ export function SaleForm() {
         const bt = p?.bottleTypeId as string | undefined;
         if (!bt) continue;
         touched.add(bt);
-        bottleBalMap.set(bt, (bottleBalMap.get(bt) || 0) + lineSoldEach(line) - returnEachOnLine(line));
+        bottleBalMap.set(bt, (bottleBalMap.get(bt) || 0) + lineSoldEach(line, ps(line.productId)) - returnEachOnLine(line));
       }
     }
     const bottleBalances = customerId
@@ -329,6 +338,7 @@ export function SaleForm() {
           .map(([id, balance]) => ({
             name: String(bottles.find((b: R) => b.id === id)?.name || 'Bottle'),
             balance: toDisplayBottle(balance),
+            perDozen: bottleSize(id),
           }))
       : undefined;
     const dateLabel = createdAt
@@ -376,7 +386,7 @@ export function SaleForm() {
       return;
     }
     if (
-      items.some((x) => !x.productId || lineSoldEach(x) < 1) ||
+      items.some((x) => !x.productId || lineSoldEach(x, ps(x.productId)) < 1) ||
       new Set(items.map((x) => x.productId)).size !== items.length
     ) {
       const msg = 'Add at least one product with quantity.';
@@ -423,7 +433,7 @@ export function SaleForm() {
     }
     const stockLines = items.map((line) => ({
       productId: line.productId,
-      quantity: line.productId ? lineSoldEach(line) : 0,
+      quantity: line.productId ? lineSoldEach(line, ps(line.productId)) : 0,
     }));
     const stockProblems = stockIssues(
       stockLines,
@@ -431,7 +441,12 @@ export function SaleForm() {
       active as { id: string; name: string }[],
     );
     if (stockProblems.length) {
-      const msg = stockProblems.map((s) => `${s.name}: only ${formatDozen(s.have)} in stock (need ${formatDozen(s.need)})`).join(' · ');
+      const msg = stockProblems
+        .map((s) => {
+          const size = ps(stockLines[s.index]?.productId || '');
+          return `${s.name}: only ${formatDozen(s.have, size)} in stock (need ${formatDozen(s.need, size)})`;
+        })
+        .join(' · ');
       setSaleError(msg);
       setFieldErrors({ ...EMPTY_SALE_FIELDS, qty: stockProblems.map((s) => s.index) });
       toast.error(msg);
@@ -441,7 +456,7 @@ export function SaleForm() {
     const payload: R = {
       items: items
         .filter((x) => x.productId)
-        .map((line) => ({ productId: line.productId, quantity: lineSoldEach(line) })),
+        .map((line) => ({ productId: line.productId, quantity: lineSoldEach(line, ps(line.productId)) })),
       discount: String(n(discount)),
       payment: String(paymentReceived),
       idempotencyKey: saleIdempotencyKey.current,
@@ -484,7 +499,7 @@ export function SaleForm() {
       setFieldErrors(
         inferSaleFieldErrors(
           err.message,
-          items.map((line) => ({ productId: line.productId, quantity: line.productId ? lineSoldEach(line) : 0 })),
+          items.map((line) => ({ productId: line.productId, quantity: line.productId ? lineSoldEach(line, ps(line.productId)) : 0 })),
           balances as R[],
         ),
       );
@@ -624,6 +639,7 @@ export function SaleForm() {
                     name: String(p.name),
                     returnable: productReturnable(p),
                   }))}
+                  perDozen={line.productId ? ps(line.productId) : undefined}
                   productReturnable={(id) => productReturnable(active.find((p: R) => p.id === id))}
                   showBottleReturns={showBottleReturns}
                   paymentModeDetail={paymentMode === 'detail'}

@@ -15,13 +15,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { QuantityEntry } from '@/components/quantity-entry';
 import { money, post } from '@/lib/api';
-import { dozenToBottles, formatDozen, perDozenTotal } from '@/lib/pack-quantity';
+import { dozenToBottles, formatDozen, packSizeOrDefault, perDozenTotal } from '@/lib/pack-quantity';
 import { invalidateBalanceQueries } from '@/lib/query-keys';
 
 type BottleType = {
   id: string;
   name?: string;
   replacementPrice?: unknown;
+  bottlesPerDozen?: unknown;
 };
 
 export type BottleCompensationDialogProps = {
@@ -55,16 +56,17 @@ export function BottleCompensationDialog({
 
   const owed = Math.max(0, bottlesOwedInternal);
   const unitPrice = n(bottleType?.replacementPrice);
+  const perDozen = packSizeOrDefault(bottleType?.bottlesPerDozen);
 
   const quantity = useMemo(() => {
     try {
-      return dozenToBottles(dozen);
+      return dozenToBottles(dozen, perDozen);
     } catch {
       return 0;
     }
-  }, [dozen]);
+  }, [dozen, perDozen]);
 
-  const totalCharge = unitPrice > 0 && quantity > 0 ? perDozenTotal(unitPrice, quantity) : 0;
+  const totalCharge = unitPrice > 0 && quantity > 0 ? perDozenTotal(unitPrice, quantity, perDozen) : 0;
   const payNowNum = n(payNow);
   const remainingBottles = owed - quantity;
   const compensationOutstanding = Math.max(0, totalCharge - payNowNum);
@@ -81,7 +83,7 @@ export function BottleCompensationDialog({
   const validationError = useMemo(() => {
     if (!unitPrice || unitPrice <= 0) return 'Set a replacement price on this bottle type first (Inventory).';
     if (quantity <= 0) return 'Enter how many dozen to compensate.';
-    if (quantity > owed) return `Cannot exceed ${formatDozen(owed)} currently owed.`;
+    if (quantity > owed) return `Cannot exceed ${formatDozen(owed, perDozen)} currently owed.`;
     if (payNowNum < 0) return 'Pay now cannot be negative.';
     if (payNowNum > totalCharge + 0.001) return 'Pay now cannot exceed the total charge.';
     return null;
@@ -123,8 +125,8 @@ export function BottleCompensationDialog({
             <p className="font-semibold text-primary">Compensation saved</p>
             <ul className="rounded-lg bg-muted/50 p-3 space-y-1.5">
               <li>
-                Bottle obligation reduced by <b>{formatDozen(quantity)}</b> — remaining{' '}
-                <b>{formatDozen(Math.max(0, remainingBottles))}</b> owed
+                Bottle obligation reduced by <b>{formatDozen(quantity, perDozen)}</b> — remaining{' '}
+                <b>{formatDozen(Math.max(0, remainingBottles), perDozen)}</b> owed
               </li>
               <li>
                 Charge: <b>{money(totalCharge)}</b>
@@ -156,13 +158,12 @@ export function BottleCompensationDialog({
               </div>
               <div className="flex justify-between gap-2 rounded-lg border border-border px-3 py-2">
                 <span className="muted">Owed (dozen)</span>
-                <span className="font-bold tabular-nums">{formatDozen(owed)}</span>
+                <span className="font-bold tabular-nums">{formatDozen(owed, perDozen)}</span>
               </div>
               <div>
                 <Label>Quantity to compensate (dozen)</Label>
                 <QuantityEntry
-                  fieldClass="field"
-                  value={dozen} onChange={setDozen}
+                  fieldClass="field" value={dozen} onChange={setDozen} perDozen={perDozen}
                 />
               </div>
               <div className="flex justify-between gap-2">

@@ -27,6 +27,7 @@ export function SaleItemCard({
   payMethods,
   onPatch,
   onRemove,
+  perDozen,
 }: {
   line: SaleLine;
   index: number;
@@ -43,6 +44,8 @@ export function SaleItemCard({
   payMethods: { id: string; name: string }[];
   onPatch: (patch: Partial<SaleLine>) => void;
   onRemove: () => void;
+  /** Bottles per dozen for the selected product. */
+  perDozen?: number;
 }) {
   const product = products.find((p) => p.id === line.productId);
   const lineReturnable = product ? productReturnable(line.productId) : false;
@@ -87,6 +90,7 @@ export function SaleItemCard({
             <QuantityInput
               value={line.soldDozen}
               onChange={(v) => onPatch({ soldDozen: v })}
+              perDozen={product ? perDozen : undefined}
               fieldClass={FS_CONTROL}
               invalid={badQty}
               disabled={!product}
@@ -99,6 +103,7 @@ export function SaleItemCard({
                 <QuantityInput
                   value={line.retDozen}
                   onChange={(v) => onPatch({ retDozen: v, retEdited: true })}
+                  perDozen={product ? perDozen : undefined}
                   fieldClass={FS_CONTROL}
                   invalid={badRet}
                   disabled={!product}

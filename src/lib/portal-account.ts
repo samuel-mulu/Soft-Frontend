@@ -1,5 +1,5 @@
 /** Customer portal account view models (read-only presentation). */
-import { formatDozen } from './pack-quantity';
+import { formatDozen, packSizeOrDefault } from './pack-quantity';
 
 export type PortalMoneyStatus = 'settled' | 'owe' | 'credit';
 
@@ -26,11 +26,13 @@ export type BottleSummaryLine = {
   owed: number;
   credit: number;
   statusLabel: string;
+  /** Bottles per dozen for this bottle type. */
+  perDozen: number;
 };
 
 export function buildBottleSummaryLines(
   summaryLines: { bottleTypeId: string; outstanding: number }[],
-  bottleTypes: { id: string; name?: string; capacityLabel?: string }[],
+  bottleTypes: { id: string; name?: string; capacityLabel?: string; bottlesPerDozen?: unknown }[],
 ): BottleSummaryLine[] {
   const nameOf = (id: string) =>
     String(bottleTypes.find((b) => String(b.id) === id)?.name || 'Bottle');
@@ -51,6 +53,7 @@ export function buildBottleSummaryLines(
       owed,
       credit,
       statusLabel,
+      perDozen: packSizeOrDefault(bottleTypes.find((b) => String(b.id) === row.bottleTypeId)?.bottlesPerDozen),
     };
   });
 }
@@ -97,12 +100,13 @@ export function buildPortalPaymentRows(history: Record<string, unknown>): Portal
   }
 
   for (const c of compensations) {
-    const bt = (c.bottleType as Record<string, unknown> | undefined)?.name || 'bottles';
+    const btRow = c.bottleType as Record<string, unknown> | undefined;
+    const bt = btRow?.name || 'bottles';
     rows.push({
       id: `comp-${c.id}`,
       at: String(c.createdAt),
       category: 'charge',
-      title: `Bottle compensation · ${formatDozen(Number(c.quantity || 0))} ${bt}`,
+      title: `Bottle compensation · ${formatDozen(Number(c.quantity || 0), packSizeOrDefault(btRow?.bottlesPerDozen))} ${bt}`,
       amountEtb: n(c.totalAmount),
       status: String(c.status || 'Charge'),
     });
@@ -139,11 +143,16 @@ export type PortalBottleRow = {
   bottleTypeName: string;
   title: string;
   quantity: number;
+  perDozen: number;
   direction: 'out' | 'in';
 };
 
-export function portalBottleMovementLabel(reason: string, delta: number): { title: string; direction: 'out' | 'in' } {
-  const qty = formatDozen(Math.abs(delta));
+export function portalBottleMovementLabel(
+  reason: string,
+  delta: number,
+  perDozen = 12,
+): { title: string; direction: 'out' | 'in' } {
+  const qty = formatDozen(Math.abs(delta), perDozen);
   switch (reason) {
     case 'SALE':
       return { title: `${qty} issued`, direction: 'out' };
@@ -168,14 +177,16 @@ export function buildPortalBottleRows(history: Record<string, unknown>): PortalB
   return movements.map((m) => {
     const reason = String(m.reason || '');
     const delta = n(m.delta);
-    const { title, direction } = portalBottleMovementLabel(reason, delta);
     const bt = m.bottleType as Record<string, unknown> | undefined;
+    const perDozen = packSizeOrDefault(bt?.bottlesPerDozen);
+    const { title, direction } = portalBottleMovementLabel(reason, delta, perDozen);
     return {
       id: String(m.id),
       at: String(m.createdAt),
       bottleTypeName: String(bt?.name || 'Bottle'),
       title,
       quantity: Math.abs(delta),
+      perDozen,
       direction,
     };
   });
@@ -186,6 +197,7 @@ export type PortalDamagedRow = {
   at: string;
   bottleTypeName: string;
   quantity: number;
+  perDozen: number;
   liabilityLabel: string;
 };
 
@@ -202,6 +214,7 @@ export function buildPortalDamagedRows(history: Record<string, unknown>): Portal
       at: String(r.createdAt),
       bottleTypeName: String(bt?.name || 'Bottle'),
       quantity: n(r.quantity),
+      perDozen: packSizeOrDefault(bt?.bottlesPerDozen),
       liabilityLabel,
     };
   });

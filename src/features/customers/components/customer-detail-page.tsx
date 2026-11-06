@@ -6,7 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useBottleTypes, useCustomerHistory, usePortalHistory } from '@/hooks/queries';
 import { money, date } from '@/lib/api';
 import { LoadError, SkeletonStatGrid, SkeletonTable } from '@/components/ui/skeleton';
-import { formatDozen, perDozenTotal } from '@/lib/pack-quantity';
+import { formatDozen, packSizeLookup, packSizeOrDefault, perDozenTotal } from '@/lib/pack-quantity';
 import { BottleBalance } from '@/components/balance-display';
 import { presentCustomerBalance } from '@/lib/customer-balance';
 import { Button } from '@/components/ui/button';
@@ -42,8 +42,9 @@ function bottleHistoryTableRows(movements: R[]): R[] {
 function movementLabel(m: R): { label: string; kind: 'bottle' | 'money' } {
   const reason = String(m.reason || '');
   const d = n(m.delta);
-  const qty = formatDozen(Math.abs(d));
-  const signed = `${d > 0 ? '+' : ''}${formatDozen(d)}`;
+  const size = packSizeOrDefault((m.bottleType as R | undefined)?.bottlesPerDozen);
+  const qty = formatDozen(Math.abs(d), size);
+  const signed = `${d > 0 ? '+' : ''}${formatDozen(d, size)}`;
   if (reason === 'SALE') return { label: `Bottle issued (+${qty} with customer)`, kind: 'bottle' };
   if (reason === 'RETURN') return { label: `Bottle returned (−${qty}, to warehouse)`, kind: 'bottle' };
   if (reason === 'COMPENSATION')
@@ -75,7 +76,7 @@ function buildUnifiedHistory(history: R | undefined, bottleName: (id: string) =>
       id: `bc-${c.id}`,
       at: c.createdAt,
       kind: 'money',
-      title: `Bottle compensation charged (${formatDozen(n(c.quantity))} × ${money(c.unitPrice)} / dz)`,
+      title: `Bottle compensation charged (${formatDozen(n(c.quantity), packSizeOrDefault((c.bottleType as R | undefined)?.bottlesPerDozen))} × ${money(c.unitPrice)} / dz)`,
       detail: money(c.totalAmount),
       meta: [c.status, (c.bottleType as R)?.name, c.note].filter(Boolean).join(' · '),
     });
@@ -125,6 +126,7 @@ export function CustomerHistoryPage({
     return Array.isArray(bottlesFromApi) ? bottlesFromApi : [];
   }, [portal, historyR?.bottleTypes, bottlesFromApi]);
   const bottleName = (id: string) => String(bottles.find((b) => b.id === id)?.name || 'Bottle');
+  const sizeOf = (id: string) => packSizeLookup(bottles).bottle(id);
   const customer = historyR?.customer as R | undefined;
 
   const bottleTotals = (
@@ -212,7 +214,7 @@ export function CustomerHistoryPage({
                       const bt = bottles.find((b) => String(b.id) === row.bottleTypeId);
                       const owed = Math.max(0, n(row.outstanding));
                       const price = n(bt?.replacementPrice);
-                      const est = owed > 0 && price > 0 ? perDozenTotal(price, owed) : 0;
+                      const est = owed > 0 && price > 0 ? perDozenTotal(price, owed, sizeOf(row.bottleTypeId)) : 0;
                       return (
                         <tr key={row.bottleTypeId}>
                           <td>
@@ -222,9 +224,9 @@ export function CustomerHistoryPage({
                             ) : null}
                           </td>
                           <td>
-                            <BottleBalance internal={n(row.outstanding)} size="sm" />
+                            <BottleBalance internal={n(row.outstanding)} size="sm" perDozen={sizeOf(row.bottleTypeId)} />
                             <span className="block text-[10px] font-semibold text-muted-foreground">
-                              {presentCustomerBalance(n(row.outstanding), 'bottle', 'staff').label}
+                              {presentCustomerBalance(n(row.outstanding), 'bottle', 'staff', sizeOf(row.bottleTypeId)).label}
                             </span>
                           </td>
                           <td className="tabular-nums">{price > 0 ? money(price) : '—'}</td>
@@ -333,7 +335,7 @@ export function CustomerHistoryPage({
                         <td>{String((m.bottleType as R)?.name || bottleName(String(m.bottleTypeId)))}</td>
                         <td>{label}</td>
                         <td>
-                          <BottleBalance internal={n(m.balanceAfter)} size="sm" />
+                          <BottleBalance internal={n(m.balanceAfter)} size="sm" perDozen={sizeOf(String(m.bottleTypeId))} />
                         </td>
                       </tr>
                     );

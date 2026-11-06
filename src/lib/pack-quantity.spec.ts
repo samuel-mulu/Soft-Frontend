@@ -1,6 +1,8 @@
 import {
-  HALF_DOZEN,
   UNITS_PER_DOZEN,
+  formatDozenValue,
+  packSizeLookup,
+  packSizeOrDefault,
   bottlesToDozen,
   dozenToBottles,
   formatDozen,
@@ -54,7 +56,46 @@ describe('dozen-only quantities', () => {
 
   it('constants', () => {
     expect(UNITS_PER_DOZEN).toBe(12);
-    expect(HALF_DOZEN).toBe(6);
+  });
+});
+
+describe('configurable dozen size (e.g. 24 bottles)', () => {
+  it('converts with the dozen size', () => {
+    expect(dozenToBottles('2', 24)).toBe(48);
+    expect(dozenToBottles('0.5', 24)).toBe(12);
+    expect(bottlesToDozen(60, 24)).toBe(2.5);
+    expect(formatDozen(60, 24)).toBe('2.5 dz');
+    expect(formatSignedDozen(-24, 24)).toBe('−1 dz');
+    expect(isHalfDozenBottles(12, 24)).toBe(true);
+    expect(isHalfDozenBottles(6, 24)).toBe(false);
+  });
+
+  it('prices per dozen of that size', () => {
+    expect(perDozenTotal(480, 60, 24)).toBe(1200);
+  });
+
+  it('falls back to 12 for missing or invalid sizes', () => {
+    expect(packSizeOrDefault(undefined)).toBe(12);
+    expect(packSizeOrDefault(13)).toBe(12);
+    expect(packSizeOrDefault(24)).toBe(24);
+  });
+
+  it('looks up sizes for bottle types and products', () => {
+    const sizes = packSizeLookup(
+      [{ id: 'b24', bottlesPerDozen: 24 }, { id: 'b12', bottlesPerDozen: 12 }],
+      [
+        { id: 'p1', bottleTypeId: 'b24', unitsPerCase: 24 },
+        { id: 'p2', bottleTypeId: null, unitsPerCase: 20 },
+      ],
+    );
+    expect(sizes.bottle('b24')).toBe(24);
+    expect(sizes.product('p1')).toBe(24);
+    expect(sizes.product('p2')).toBe(20);
+    expect(sizes.bottle('missing')).toBe(12);
+  });
+
+  it('formats already-summed dozens', () => {
+    expect(formatDozenValue(4.5)).toBe('4.5 dz');
   });
 });
 

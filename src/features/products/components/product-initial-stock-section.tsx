@@ -29,6 +29,7 @@ export function ProductInitialStockSection({
   suppliers,
   owner,
   purpose = 'create',
+  perDozen = 12,
 }: {
   returnable: boolean;
   availableEmpty: number;
@@ -38,10 +39,12 @@ export function ProductInitialStockSection({
   owner: boolean;
   /** Edit always shows the three receive modes. Blank quantity leaves stock unchanged. */
   purpose?: 'create' | 'edit';
+  /** Bottles per dozen for this product (from its bottle type, or its own size). */
+  perDozen?: number;
 }) {
   const enabled = purpose === 'edit' || fields.enableInitialStock;
   const activeFields = enabled ? { ...fields, enableInitialStock: true } : fields;
-  const q = computeInitialStockQuantities(activeFields, returnable);
+  const q = computeInitialStockQuantities(activeFields, returnable, perDozen);
   const projectedEmpty = availableEmpty - q.fromExisting;
   const showSupplier =
     returnable &&
@@ -80,6 +83,7 @@ export function ProductInitialStockSection({
           <p className="label mb-2">Starting stock (dozen)</p>
           <QuantityEntry
             fieldClass="field"
+            perDozen={perDozen}
             value={fields.unitOnlyQty}
             onChange={(v) => onChange({ unitOnlyQty: v })}
           />
@@ -117,12 +121,13 @@ export function ProductInitialStockSection({
               {fields.receiveMode === 'FROM_EXISTING_EMPTIES' && (
                 <p className="text-xs text-muted-foreground">
                   Available empty in warehouse:{' '}
-                  <span className="font-bold tabular-nums text-foreground">{formatDozen(availableEmpty)}</span>
+                  <span className="font-bold tabular-nums text-foreground">{formatDozen(availableEmpty, perDozen)}</span>
                 </p>
               )}
               <p className="label mb-1">Quantity (dozen)</p>
               <QuantityEntry
                 fieldClass="field"
+                perDozen={perDozen}
                 value={fields.dozen}
                 onChange={(v) => onChange({ dozen: v })}
               />
@@ -133,13 +138,14 @@ export function ProductInitialStockSection({
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
                 Available empty:{' '}
-                <span className="font-bold tabular-nums">{formatDozen(availableEmpty)}</span>. Total full stock
+                <span className="font-bold tabular-nums">{formatDozen(availableEmpty, perDozen)}</span>. Total full stock
                 increases by both portions combined.
               </p>
               <div>
                 <p className="label mb-1">Using my empty bottles (dozen)</p>
                 <QuantityEntry
                   fieldClass="field"
+                  perDozen={perDozen}
                   value={fields.mixedFromDozen}
                   onChange={(v) => onChange({ mixedFromDozen: v })}
                 />
@@ -148,6 +154,7 @@ export function ProductInitialStockSection({
                 <p className="label mb-1">With new supplier bottles (dozen)</p>
                 <QuantityEntry
                   fieldClass="field"
+                  perDozen={perDozen}
                   value={fields.mixedSupDozen}
                   onChange={(v) => onChange({ mixedSupDozen: v })}
                 />
@@ -189,24 +196,24 @@ export function ProductInitialStockSection({
           {q.totalFull > 0 && (
             <div className="rounded-lg border border-border bg-card p-3 text-xs space-y-1">
               <p>
-                Full stock added: <b className="tabular-nums">{formatDozen(q.totalFull)}</b>
+                Full stock added: <b className="tabular-nums">{formatDozen(q.totalFull, perDozen)}</b>
               </p>
               {returnable && q.fromExisting > 0 && (
                 <>
                   <p>
-                    From empties: <b className="tabular-nums">{formatDozen(q.fromExisting)}</b>
+                    From empties: <b className="tabular-nums">{formatDozen(q.fromExisting, perDozen)}</b>
                   </p>
                   <p>
                     Projected empty stock:{' '}
                     <b className={`tabular-nums ${projectedEmpty < 0 ? 'text-destructive' : ''}`}>
-                      {formatDozen(projectedEmpty)}
+                      {formatDozen(projectedEmpty, perDozen)}
                     </b>
                   </p>
                 </>
               )}
               {returnable && q.withSupplier > 0 && (
                 <p>
-                  With supplier bottles: <b className="tabular-nums">{formatDozen(q.withSupplier)}</b>
+                  With supplier bottles: <b className="tabular-nums">{formatDozen(q.withSupplier, perDozen)}</b>
                 </p>
               )}
             </div>

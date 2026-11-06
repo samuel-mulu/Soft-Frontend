@@ -37,8 +37,16 @@ function PortalSignedMoney({ internal, className = '' }: { internal: number; cla
   );
 }
 
-function PortalSignedBottles({ internal, className = '' }: { internal: number; className?: string }) {
-  const presented = presentCustomerBalance(internal, 'bottle', 'customer');
+function PortalSignedBottles({
+  internal,
+  className = '',
+  perDozen,
+}: {
+  internal: number;
+  className?: string;
+  perDozen?: number;
+}) {
+  const presented = presentCustomerBalance(internal, 'bottle', 'customer', perDozen);
   return (
     <span className={`font-extrabold tabular-nums ${toneCls[presented.tone]} ${className}`}>
       {presented.formatted}
@@ -97,8 +105,9 @@ function WalletCard({ history }: { history: R }) {
 
 function BottleSummary({ history, lines }: { history: R; lines: ReturnType<typeof buildBottleSummaryLines> }) {
   const movements = (history.bottles as unknown[]) || [];
-  const totalOwed = lines.reduce((s, l) => s + l.owed, 0);
-  const totalCredit = lines.reduce((s, l) => s + l.credit, 0);
+  // Mixed bottle sizes: sum in dozens, shown on a 12-per-dozen scale.
+  const totalOwed = lines.reduce((s, l) => s + (l.owed * 12) / l.perDozen, 0);
+  const totalCredit = lines.reduce((s, l) => s + (l.credit * 12) / l.perDozen, 0);
   const hasHistory = movements.length > 0;
 
   return (
@@ -137,9 +146,9 @@ function BottleSummary({ history, lines }: { history: R; lines: ReturnType<typeo
                     )}
                   </div>
                   <div className="text-right">
-                    <PortalSignedBottles internal={line.internal} className="text-lg" />
+                    <PortalSignedBottles internal={line.internal} className="text-lg" perDozen={line.perDozen} />
                     <p className="text-[10px] font-semibold text-[#64748B]">
-                      {presentCustomerBalance(line.internal, 'bottle', 'customer').label}
+                      {presentCustomerBalance(line.internal, 'bottle', 'customer', line.perDozen).label}
                     </p>
                   </div>
                 </li>
@@ -324,7 +333,7 @@ export function CustomerPortalAccount() {
                             className="text-xs font-bold px-2 py-1 rounded-lg bg-[#f4f8f5] text-[#192821]"
                           >
                             {l.name}:{' '}
-                            <PortalSignedBottles internal={l.internal} className="text-xs inline" />
+                            <PortalSignedBottles internal={l.internal} className="text-xs inline" perDozen={l.perDozen} />
                           </span>
                         ))}
                     </div>
@@ -348,7 +357,7 @@ export function CustomerPortalAccount() {
                           r.direction === 'out' ? 'text-[#a8662b]' : 'text-[#15803D]'
                         }`}
                       >
-                        {formatDozen(r.quantity)}
+                        {formatDozen(r.quantity, r.perDozen)}
                       </span>
                     );
                   }}
@@ -367,7 +376,7 @@ export function CustomerPortalAccount() {
                     {damagedRows.map((r) => (
                       <li key={r.id} className="py-3">
                         <p className="font-semibold text-sm">
-                          {formatDozen(r.quantity)} × {r.bottleTypeName}
+                          {formatDozen(r.quantity, r.perDozen)} × {r.bottleTypeName}
                         </p>
                         <p className="text-xs text-[#64748B] mt-0.5">{date(r.at)}</p>
                         <p className="text-xs font-medium text-[#192821] mt-1">{r.liabilityLabel}</p>

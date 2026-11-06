@@ -10,7 +10,15 @@ import { SubtleRefreshIndicator } from '@/components/shared/subtle-refresh-indic
 import { getUser, post } from '@/lib/api';
 import { invalidateBalanceQueries, queryKeys } from '@/lib/query-keys';
 import { presentCustomerBalance } from '@/lib/customer-balance';
-import { formatDozen, isValidDozenField, safeDozenToBottles } from '@/lib/pack-quantity';
+import {
+  DEFAULT_PACK_SIZE,
+  formatDozen,
+  formatDozenValue,
+  isValidDozenField,
+  isValidPackSize,
+  packSizeOrDefault,
+  safeDozenToBottles,
+} from '@/lib/pack-quantity';
 import { QuantityEntry } from '@/components/quantity-entry';
 import { QueryRefreshButton } from '@/components/shared/query-refresh-button';
 import { LoadErrorBanner } from '@/components/shared/load-error';
@@ -57,8 +65,8 @@ function StatCard({
   );
 }
 
-function withCustomersCell(obligations: number) {
-  const presented = presentCustomerBalance(n(obligations), 'bottle', 'staff');
+function withCustomersCell(obligations: number, perDozen: number) {
+  const presented = presentCustomerBalance(n(obligations), 'bottle', 'staff', perDozen);
   const color =
     presented.tone === 'danger' ? 'text-[#DC2626]' : presented.tone === 'success' ? 'text-[#15803D]' : 'text-muted-foreground';
   return <span className={`font-extrabold tabular-nums ${color}`}>{presented.formatted}</span>;
@@ -71,7 +79,12 @@ export function BottleWarehouseList() {
   const summaryR = summary as R | undefined;
   const rows = (summaryR?.rows as R[]) || [];
   const totals = (summaryR?.totals as R) || {};
-  const withCustomersTotal = rows.reduce((s, r) => s + n(r.customerObligationsInternal), 0);
+  const sizeOfRow = (r: R) => packSizeOrDefault(r.bottlesPerDozen);
+  /** Mixed dozen sizes: normalise to 12-per-dozen so the total reads in dozens. */
+  const withCustomersTotal = rows.reduce(
+    (s, r) => s + (n(r.customerObligationsInternal) * DEFAULT_PACK_SIZE) / sizeOfRow(r),
+    0,
+  );
 
   const [createOpen, setCreateOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -79,20 +92,27 @@ export function BottleWarehouseList() {
   const [capacityLabel, setCapacityLabel] = useState('');
   const [replacementPrice, setReplacementPrice] = useState('');
   const [initialQty, setInitialQty] = useState('');
+  const [bottlesPerDozen, setBottlesPerDozen] = useState('12');
   const [note, setNote] = useState('');
 
   async function createBottle() {
     setBusy(true);
     try {
+      const size = Number(bottlesPerDozen);
+      if (!isValidPackSize(size)) {
+        toast.error('Bottles per dozen must be an even whole number (e.g. 12 or 24)');
+        return;
+      }
       if (!isValidDozenField(initialQty)) {
         toast.error('Use whole or half dozens (e.g. 1, 1.5, 2)');
         return;
       }
-      const qty = safeDozenToBottles(initialQty);
+      const qty = safeDozenToBottles(initialQty, size);
       await post('/bottle-types', {
         name: name.trim(),
         capacityLabel: capacityLabel.trim() || undefined,
         replacementPrice: replacementPrice.trim() || undefined,
+        bottlesPerDozen: size,
         ...(qty > 0 ? { initialWarehouseQuantity: qty, note: note.trim() } : {}),
       });
       toast.success('Bottle type created');
@@ -101,6 +121,7 @@ export function BottleWarehouseList() {
       setCapacityLabel('');
       setReplacementPrice('');
       setInitialQty('');
+      setBottlesPerDozen('12');
       setNote('');
       await invalidateBalanceQueries(qc);
     } catch (e: unknown) {
@@ -134,7 +155,7 @@ export function BottleWarehouseList() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-6 md:mb-7">
             <StatCard
               label="In warehouse"
-              value={formatDozen(n(totals.warehouse))}
+              value={formatDozenValue(n(totals.warehouseDozen))}
               icon={GlassWater}
               small="Physical empties you hold"
               valueClassName="text-primary"
@@ -154,7 +175,7 @@ export function BottleWarehouseList() {
             />
             <StatCard
               label="Damaged"
-              value={formatDozen(n(totals.damaged))}
+              value={formatDozenValue(n(totals.damagedDozen))}
               icon={AlertTriangle}
               small="Write-off / broken stock"
             />
@@ -191,14 +212,15 @@ export function BottleWarehouseList() {
                     <tr key={String(r.bottleTypeId)}>
                       <td>
                         <b>{String(r.name)}</b>
+                        <span className="block text-xs muted">1 dz = {sizeOfRow(r)} bottles</span>
                       </td>
                       <td>
-                        <span className="font-extrabold text-primary tabular-nums">{formatDozen(n(r.warehouse))}</span>
+                        <span className="font-extrabold text-primary tabular-nums">{formatDozen(n(r.warehouse), sizeOfRow(r))}</span>
                       </td>
                       <td>
-                        <span className="font-extrabold tabular-nums">{formatDozen(n(r.damaged))}</span>
+                        <span className="font-extrabold tabular-nums">{formatDozen(n(r.damaged), sizeOfRow(r))}</span>
                       </td>
-                      <td>{withCustomersCell(n(r.customerObligationsInternal))}</td>
+                      <td>{withCustomersCell(n(r.customerObligationsInternal), sizeOfRow(r))}</td>
                       {owner ? (
                         <td className="whitespace-nowrap">
                           <Link
@@ -231,10 +253,25 @@ export function BottleWarehouseList() {
             onChange={(e) => setCapacityLabel(e.target.value)}
             placeholder="e.g. 300ml"
           />
+          <Label>Bottles per dozen (crate size)</Label>
+          <Input
+            type="number"
+            min={2}
+            step={2}
+            value={bottlesPerDozen}
+            onChange={(e) => setBottlesPerDozen(e.target.value)}
+            placeholder="12"
+          />
+          <p className="text-xs muted">How many bottles make one dozen for this bottle, e.g. 12 or 24.</p>
           <Label>Replacement price ETB per dozen (optional)</Label>
           <Input value={replacementPrice} onChange={(e) => setReplacementPrice(e.target.value)} />
           <Label>Initial empty warehouse quantity in dozen (optional)</Label>
-          <QuantityEntry fieldClass="field" value={initialQty} onChange={setInitialQty} />
+          <QuantityEntry
+            fieldClass="field"
+            value={initialQty}
+            onChange={setInitialQty}
+            perDozen={packSizeOrDefault(Number(bottlesPerDozen))}
+          />
           {safeDozenToBottles(initialQty) > 0 && (
             <>
               <Label>Reason for initial stock</Label>

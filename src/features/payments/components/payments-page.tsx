@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useCustomers, useCustomerHistory, usePayments } from '@/hooks/queries';
 import { money, date, post } from '@/lib/api';
-import { formatDozen } from '@/lib/pack-quantity';
+import { formatDozen, packSizeOrDefault } from '@/lib/pack-quantity';
 import { QueryRefreshButton } from '@/components/shared/query-refresh-button';
 import { SubtleRefreshIndicator } from '@/components/shared/subtle-refresh-indicator';
 import { LoadErrorBanner } from '@/components/shared/load-error';
@@ -57,7 +57,7 @@ export function PaymentsPage() {
     id: String(c.id),
     remaining: n(c.remaining),
     createdAt: String(c.createdAt),
-    label: `${(c.bottleType as R)?.name || 'Bottles'} · ${formatDozen(Number(c.quantity || 0))} · ${money(c.remaining)} left`,
+    label: `${(c.bottleType as R)?.name || 'Bottles'} · ${formatDozen(Number(c.quantity || 0), packSizeOrDefault((c.bottleType as R | undefined)?.bottlesPerDozen))} · ${money(c.remaining)} left`,
   }));
 
   const preview = useMemo(() => {

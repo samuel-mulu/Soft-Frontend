@@ -9,6 +9,7 @@ import { QuantityEntry } from '@/components/quantity-entry';
 import { BottleBalance, BottleBalanceList } from '@/components/balance-display';
 import { dozenToBottles, formatDozen, projectBottleInternal } from '@/lib/pack-quantity';
 import { invalidateBalanceQueries } from '@/lib/query-keys';
+import { usePackSizes } from '@/hooks/use-pack-sizes';
 
 type R = Record<string, unknown>;
 
@@ -136,6 +137,8 @@ export function BottleReturnsPage() {
 
   const [customerId, setCustomerId] = useState('');
   const [bottleTypeId, setBottleTypeId] = useState('');
+  const sizes = usePackSizes();
+  const perDozen = sizes.bottle(bottleTypeId);
   const [returnDozen, setReturnDozen] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -152,11 +155,11 @@ export function BottleReturnsPage() {
 
   const returnEachParsed = useMemo(() => {
     try {
-      return dozenToBottles(returnDozen);
+      return dozenToBottles(returnDozen, perDozen);
     } catch {
       return null;
     }
-  }, [returnDozen]);
+  }, [returnDozen, perDozen]);
   const qtyInvalid = returnEachParsed === null;
   const returnEachTotal = returnEachParsed ?? 0;
 
@@ -173,7 +176,7 @@ export function BottleReturnsPage() {
     }
     let quantity: number;
     try {
-      quantity = dozenToBottles(returnDozen);
+      quantity = dozenToBottles(returnDozen, perDozen);
       if (quantity <= 0) {
         toast.error('Enter a return quantity');
         return;
@@ -221,6 +224,7 @@ export function BottleReturnsPage() {
                 value={returnDozen}
                 onChange={setReturnDozen}
                 fieldClass="field"
+                perDozen={bottleTypeId ? perDozen : undefined}
                 invalid={qtyInvalid}
               />
             </Field>
@@ -228,17 +232,17 @@ export function BottleReturnsPage() {
               <div className="rounded-xl bg-[#f8faf8] p-4 space-y-2 text-sm">
                 <div className="flex justify-between gap-3">
                   <span className="muted">Previous balance</span>
-                  <BottleBalance internal={currentInternal} />
+                  <BottleBalance internal={currentInternal} perDozen={perDozen} />
                 </div>
                 <div className="flex justify-between gap-3">
                   <span className="muted">Returning</span>
                   <span className="font-bold tabular-nums">
-                    {returnEachTotal > 0 ? formatDozen(returnEachTotal) : '—'}
+                    {returnEachTotal > 0 ? formatDozen(returnEachTotal, perDozen) : '—'}
                   </span>
                 </div>
                 <div className="flex justify-between gap-3 border-t border-[#e5eae5] pt-2">
                   <span className="font-bold">Projected balance</span>
-                  <BottleBalance internal={projectedInternal} />
+                  <BottleBalance internal={projectedInternal} perDozen={perDozen} />
                 </div>
               </div>
             )}
@@ -278,7 +282,7 @@ export function BottleReturnsPage() {
                 name: 'Movement',
                 render: (r) => {
                   const d = n(r.delta);
-                  const qty = formatDozen(Math.abs(d));
+                  const qty = formatDozen(Math.abs(d), sizes.bottle(r.bottleTypeId));
                   const text = d > 0 ? `+${qty} with customer` : d < 0 ? `−${qty} in your stock` : '—';
                   return (
                     <span className={`text-sm font-semibold ${d > 0 ? 'text-[#a8662b]' : d < 0 ? 'text-[#177554]' : ''}`}>

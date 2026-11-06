@@ -87,12 +87,12 @@ describe('customer-balance display', () => {
   });
 
   it('splits bottle ledger into with-customer vs from-customer', () => {
-    expect(bottleLedgerTotals([{ outstanding: 50 }])).toEqual({
+    expect(bottleLedgerTotals([{ outstanding: 50 }])).toMatchObject({
       withCustomer: 50,
       fromCustomer: 0,
       netInternal: 50,
     });
-    expect(bottleLedgerTotals([{ outstanding: 50 }, { outstanding: -5 }])).toEqual({
+    expect(bottleLedgerTotals([{ outstanding: 50 }, { outstanding: -5 }])).toMatchObject({
       withCustomer: 50,
       fromCustomer: 5,
       netInternal: 45,
@@ -102,6 +102,18 @@ describe('customer-balance display', () => {
         { bottleBalances: [{ outstanding: 50 }] },
         { bottleBalances: [{ outstanding: -3 }] },
       ]),
-    ).toEqual({ withCustomer: 50, fromCustomer: 3, netInternal: 47 });
+    ).toMatchObject({ withCustomer: 50, fromCustomer: 3, netInternal: 47 });
+  });
+
+  it('sums mixed bottle sizes in dozens', () => {
+    const sizeOf = (id: string) => (id === 'big' ? 24 : 12);
+    const totals = aggregateCustomersBottleBalances(
+      [
+        { bottleBalances: [{ bottleTypeId: 'big', outstanding: 48 }] },
+        { bottleBalances: [{ bottleTypeId: 'small', outstanding: 24 }] },
+      ],
+      sizeOf,
+    );
+    expect(totals.withCustomerDozen).toBe(4);
   });
 });

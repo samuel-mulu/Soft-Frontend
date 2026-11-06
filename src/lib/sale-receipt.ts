@@ -1,5 +1,5 @@
 import { getLogoUrl } from '@/lib/brand';
-import { formatDozen, formatSignedDozen } from '@/lib/pack-quantity';
+import { formatDozen, formatDozenValue, formatSignedDozen } from '@/lib/pack-quantity';
 
 export type SaleReceiptData={
  businessName:string;
@@ -10,22 +10,22 @@ export type SaleReceiptData={
  paymentMode:'total'|'detail';
  paymentMethodLabel?:string;
  /** qty / sold / returned / withCustomer / balance are single-bottle counts; printed in dozens. */
- moneyLines:{name:string;qty:number;qtyLabel?:string;unitPrice:string;lineTotal:string;paid?:string;method?:string;credit?:string}[];
+ moneyLines:{name:string;qty:number;perDozen?:number;qtyLabel?:string;unitPrice:string;lineTotal:string;paid?:string;method?:string;credit?:string}[];
  subtotal:string;
  discount:string;
  total:string;
  received:string;
  remaining:string;
- bottleLines?:{product:string;sold:number;soldLabel?:string;returned:number;returnedLabel?:string;withCustomer:number}[];
- bottleBalances?:{name:string;balance:number}[];
+ bottleLines?:{product:string;sold:number;perDozen?:number;soldLabel?:string;returned:number;returnedLabel?:string;withCustomer:number}[];
+ bottleBalances?:{name:string;balance:number;perDozen?:number}[];
  note?:string;
  receiptRef?:string;
 };
 
 const esc=(s:string)=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-function fmtBal(n:number){
- return formatSignedDozen(n);
+function fmtBal(n:number,perDozen?:number){
+ return formatSignedDozen(n,perDozen);
 }
 
 function moneyRow(cells:string[],head=false){
@@ -46,7 +46,7 @@ export function buildSaleReceiptHtml(d:SaleReceiptData,opts?:{autoPrint?:boolean
   ?['Product','Qty (dz)','Price / dz','Line','Paid','Method','Credit']
   :['Product','Qty (dz)','Price / dz','Line'];
  const moneyBody=d.moneyLines.map(l=>{
-  const qtyCell=formatDozen(l.qty);
+  const qtyCell=formatDozen(l.qty,l.perDozen);
   const base=[esc(l.name),qtyCell,esc(l.unitPrice),esc(l.lineTotal)];
   if(d.paymentMode==='detail')base.push(esc(l.paid||'—'),esc(l.method||'—'),esc(l.credit||'—'));
   return moneyRow(base);
@@ -55,7 +55,7 @@ export function buildSaleReceiptHtml(d:SaleReceiptData,opts?:{autoPrint?:boolean
  const bottleBlock=d.bottleLines?.length?`
   <h2 class="section">Bottles · this sale</h2>
   <table class="tbl compact"><thead>${moneyRow(['Product','Sold','Returned','Kept'],true)}</thead>
-  <tbody>${d.bottleLines.map(b=>{return moneyRow([esc(b.product),formatDozen(b.sold),formatDozen(b.returned),formatDozen(b.withCustomer)]);}).join('')}</tbody></table>`:'';
+  <tbody>${d.bottleLines.map(b=>{return moneyRow([esc(b.product),formatDozen(b.sold,b.perDozen),formatDozen(b.returned,b.perDozen),formatDozen(b.withCustomer,b.perDozen)]);}).join('')}</tbody></table>`:'';
 
  const balanceRows:string[]=[];
  const creditWarn=!/^0\.00 ETB$/i.test(d.remaining.trim());
@@ -63,11 +63,11 @@ export function buildSaleReceiptHtml(d:SaleReceiptData,opts?:{autoPrint?:boolean
  if(d.bottleBalances?.length){
   for(const b of d.bottleBalances){
    const cls=b.balance<0?'warn':b.balance>0?'ok':'';
-   balanceRows.push(`<div class="bal-row"><span>Bottles · ${esc(b.name)}</span><strong class="${cls}">${fmtBal(b.balance)}</strong></div>`);
+   balanceRows.push(`<div class="bal-row"><span>Bottles · ${esc(b.name)}</span><strong class="${cls}">${fmtBal(b.balance,b.perDozen)}</strong></div>`);
   }
  }else if(d.bottleLines?.length){
-  const kept=d.bottleLines.reduce((s,x)=>s+x.withCustomer,0);
-  balanceRows.push(`<div class="bal-row"><span>Bottles kept (this sale)</span><strong class="${kept>0?'warn':''}">${formatSignedDozen(kept)}</strong></div>`);
+  const kept=d.bottleLines.reduce((s,x)=>s+x.withCustomer/(x.perDozen||12),0);
+  balanceRows.push(`<div class="bal-row"><span>Bottles kept (this sale)</span><strong class="${kept>0?'warn':''}">${kept>0?'+':''}${formatDozenValue(kept)}</strong></div>`);
  }
 
  const logo=d.logoUrl?`<img class="logo" src="${esc(d.logoUrl)}" alt=""/>`:'';

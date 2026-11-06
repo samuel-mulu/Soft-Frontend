@@ -1,6 +1,6 @@
 'use client';
 
-import { isValidDozenField } from '@/lib/pack-quantity';
+import { dozenSizeLabel, isValidDozenField } from '@/lib/pack-quantity';
 
 /** Quantity input — dozens only, in half-dozen steps (1, 1.5, 2 …). */
 export function QuantityEntry({
@@ -12,6 +12,7 @@ export function QuantityEntry({
   disabled,
   placeholder = 'Dozen',
   ariaLabel = 'Quantity in dozens',
+  perDozen,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -21,10 +22,14 @@ export function QuantityEntry({
   disabled?: boolean;
   placeholder?: string;
   ariaLabel?: string;
+  /** Bottles in one dozen for this item (12, 24, …); shown as a hint. */
+  perDozen?: number;
 }) {
   const badStep = !isValidDozenField(value);
   const inv = invalid || badStep ? ' field-invalid' : '';
-  const shownHint = badStep ? 'Use whole or half dozens (e.g. 1, 1.5, 2)' : hint;
+  const shownHint = badStep
+    ? 'Use whole or half dozens (e.g. 1, 1.5, 2)'
+    : hint ?? (perDozen ? dozenSizeLabel(perDozen) : null);
 
   return (
     <div className="qty-entry min-w-0">

@@ -76,6 +76,16 @@ describe('product initial stock', () => {
     expect(validateInitialStock(f, true, 500)).toMatch(/Not enough empty/);
   });
 
+  it('uses the dozen size of the bottle type', () => {
+    const f = {
+      ...defaultInitialStockFields(),
+      enableInitialStock: true,
+      receiveMode: 'WITH_BOTTLES' as const,
+      dozen: '10',
+    };
+    expect(buildProductCreateStockPayload(f, true, 24).initialQuantity).toBe(240);
+  });
+
   it('rejects quantities that are not half-dozen steps', () => {
     const f = {
       ...defaultInitialStockFields(),

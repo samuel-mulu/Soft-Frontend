@@ -27,6 +27,12 @@ describe('sale line quantity helpers (dozen only)', () => {
     expect(() => lineSoldEachStrict(line)).toThrow();
   });
 
+  it('uses the product dozen size', () => {
+    const line = { ...emptySaleLine(), soldDozen: '1.5' };
+    expect(lineSoldEach(line, 24)).toBe(36);
+    expect(soldQtyLabel(line, 24)).toBe('1.5 dz');
+  });
+
   it('projected display after partial return', () => {
     const line = { ...emptySaleLine(), soldDozen: '1.5', retDozen: '1' };
     const internal = projectBottleInternal(0, lineSoldEach(line), lineReturnedEach(line));
