@@ -50,14 +50,35 @@ function movementLabel(m: R): { label: string; kind: 'bottle' | 'money' } {
   if (reason === 'COMPENSATION')
     return { label: `Bottle compensation (−${qty} obligation)`, kind: 'bottle' };
   if (reason === 'BROKEN_WAIVED') return { label: `Bottle liability waived (−${qty})`, kind: 'bottle' };
-  if (reason === 'ADJUSTMENT')
+  if (reason === 'ADJUSTMENT') {
+    const note = String(m.note || '');
+    if (note === 'Initial from manual to digital') {
+      return { label: `Opening bottles (${signed}) · Initial from manual to digital`, kind: 'bottle' };
+    }
     return { label: `Bottle adjustment (${signed})`, kind: 'bottle' };
+  }
   return { label: `${reason} (${signed})`, kind: 'bottle' };
 }
 
 function buildUnifiedHistory(history: R | undefined, bottleName: (id: string) => string): R[] {
   if (!history) return [];
   const rows: R[] = [];
+
+  const customer = history.customer as R | undefined;
+  const openingMoney = n(customer?.openingMoney);
+  if (Math.abs(openingMoney) > 0.001) {
+    rows.push({
+      id: 'opening-money',
+      at: customer?.createdAt,
+      kind: 'money',
+      title:
+        openingMoney > 0
+          ? 'Opening payment balance (customer owed)'
+          : 'Opening payment balance (customer credit)',
+      detail: money(Math.abs(openingMoney)),
+      meta: 'Initial from manual to digital',
+    });
+  }
 
   for (const m of (history.bottles as R[]) || []) {
     const { label, kind } = movementLabel(m);

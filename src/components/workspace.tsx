@@ -3,7 +3,11 @@ import {useState,useEffect} from 'react';import {createPortal} from 'react-dom';
 import {ApiRequestError,friendlySaleError,inferSaleFieldErrors,postSaleWithRetry,stockIssues,type SaleFieldErrors} from '@/lib/sale-errors';import {toast} from 'sonner';import {api,post,patch,money,amount,date,getUser} from '@/lib/api';import {printSaleReceipt,downloadSaleReceipt,resolveReceiptLogoUrl,type SaleReceiptData} from '@/lib/sale-receipt';import {printReport} from '@/lib/report-print';import {getBusinessName} from '@/lib/brand';
 import {DataLoadSkeleton,LoadError,SkeletonTable,SkeletonStatGrid} from '@/components/ui/skeleton';
 import {DesktopTable,ResponsiveList,type ListColumn} from '@/components/responsive-list';import {SalePage} from '@/features/sales/components/sale-page';import {BottleReturnsPage} from '@/components/bottle-returns-page';
-import {ProductInitialStockSection,buildProductCreateStockPayload,defaultInitialStockFields,validateInitialStock,type InitialStockFields} from '@/features/products/components/product-initial-stock-section';import {formatDozen,formatDozenValue,formatSignedDozen,isValidDozenField,isValidPackSize,packSizeOrDefault,safeDozenToBottles} from '@/lib/pack-quantity';import {usePackSizes} from '@/hooks/use-pack-sizes';import {BottleBalance,BottleBalanceList,MoneyBalance} from '@/components/balance-display';import {aggregateCustomersBottleBalances,formatDisplayBottle,formatDisplayMoney,presentCustomerBalance,toDisplayBottle,toDisplayMoney} from '@/lib/customer-balance';import {invalidateAfterExpense,invalidateBalanceQueries,queryKeys} from '@/lib/query-keys';import {Plus,Search,ArrowRight,ArrowLeft,Download,RefreshCw,ShoppingBag,PackageCheck,Wallet,GlassWater,TrendingUp,Users,Receipt,ChevronLeft,ChevronRight,ChevronDown,Printer,X} from 'lucide-react';import {useApiQuery} from '@/hooks/use-api-query';import {useDebouncedValue} from '@/hooks/use-debounced-value';import {useCustomers,useSales,useInventoryBalances,useDashboardSummary,useBottleTypes,useProducts,useEmptyBottleSummary,useSuppliers,usePayments,useExpenses,useUsers,useSale,useReportsSummary,useReportsActivity,useCustomerHistory,usePortalHistory} from '@/hooks/queries';import {LoadErrorBanner} from '@/components/shared/load-error';import {SubtleRefreshIndicator} from '@/components/shared/subtle-refresh-indicator';import {QueryRefreshButton} from '@/components/shared/query-refresh-button';import {showInitialSkeleton,showBlockingError,showErrorBanner} from '@/lib/table-query-state';
+import {ProductInitialStockSection,buildProductCreateStockPayload,defaultInitialStockFields,validateInitialStock,type InitialStockFields} from '@/features/products/components/product-initial-stock-section';
+import {CustomerInitialRegistrationSection} from '@/features/customers/components/customer-initial-registration-section';
+import {buildInitialRegistrationPayload,defaultInitialRegistrationFields,validateInitialRegistration,type InitialRegistrationFields} from '@/lib/customer-initial-registration';
+import {formatDozen,formatDozenValue,formatSignedDozen,isValidDozenField,isValidPackSize,packSizeOrDefault,safeDozenToBottles} from '@/lib/pack-quantity';
+import {usePackSizes} from '@/hooks/use-pack-sizes';import {BottleBalance,BottleBalanceList,MoneyBalance} from '@/components/balance-display';import {aggregateCustomersBottleBalances,formatDisplayBottle,formatDisplayMoney,presentCustomerBalance,toDisplayBottle,toDisplayMoney} from '@/lib/customer-balance';import {invalidateAfterExpense,invalidateBalanceQueries,queryKeys} from '@/lib/query-keys';import {Plus,Search,ArrowRight,ArrowLeft,Download,RefreshCw,ShoppingBag,PackageCheck,Wallet,GlassWater,TrendingUp,Users,Receipt,ChevronLeft,ChevronRight,ChevronDown,Printer,X} from 'lucide-react';import {useApiQuery} from '@/hooks/use-api-query';import {useDebouncedValue} from '@/hooks/use-debounced-value';import {useCustomers,useSales,useInventoryBalances,useDashboardSummary,useBottleTypes,useProducts,useEmptyBottleSummary,useSuppliers,usePayments,useExpenses,useUsers,useSale,useReportsSummary,useReportsActivity,useCustomerHistory,usePortalHistory} from '@/hooks/queries';import {LoadErrorBanner} from '@/components/shared/load-error';import {SubtleRefreshIndicator} from '@/components/shared/subtle-refresh-indicator';import {QueryRefreshButton} from '@/components/shared/query-refresh-button';import {showInitialSkeleton,showBlockingError,showErrorBanner} from '@/lib/table-query-state';
 type R=Record<string,any>;
 const n=(v:any)=>Number(v||0);const today=()=>new Date().toISOString().slice(0,10);
 function registeredCustomerOptions(rows:R[],activeOnly=false){return (rows||[]).filter((x)=>!activeOnly||x.status==='ACTIVE').map((c)=>({id:c.id,name:c.phone?`${c.name} · ${c.phone}`:String(c.name)}));}
@@ -44,6 +48,7 @@ function CustomerFilterTabs({tab,onTab}:{tab:CustomerBalanceFilter;onTab:(t:Cust
 function CustomerBottleSummaryTabs({tab,onTab}:{tab:CustomerBottleSummaryView;onTab:(t:CustomerBottleSummaryView)=>void}){const items:[CustomerBottleSummaryView,string][]=[['full','All lines'],['stock-in','Added to stock'],['out','With customers']];return <div className="mb-2 flex flex-wrap gap-1">{items.map(([id,label])=><button key={id} type="button" className={`rounded-md px-2 py-1 text-[10px] font-bold transition-colors ${tab===id?'bg-secondary text-primary border border-border':'text-muted-foreground hover:bg-muted/80'}`} onClick={()=>onTab(id)}>{label}</button>)}</div>;}
 function Customers(){
  const router=useRouter();
+ const owner=getUser()?.role==='OWNER';
  const {data:customers,isLoading:customersLoading,isFetching:customersFetching}=useCustomers();
  const {data:bottles=[]}=useBottleTypes();
  const {submit,busy}=useSubmit();
@@ -52,7 +57,20 @@ function Customers(){
  const [balanceFilter,setBalanceFilter]=useState<CustomerBalanceFilter>('all');
  const [bottleSummaryView,setBottleSummaryView]=useState<CustomerBottleSummaryView>('full');
  const [form,setForm]=useState<R>({});
+ const [initialReg,setInitialReg]=useState<InitialRegistrationFields>(defaultInitialRegistrationFields());
  const [open,setOpen]=useState(false);
+ const patchInitialReg=(patch:Partial<InitialRegistrationFields>)=>setInitialReg(x=>({...x,...patch}));
+ async function saveCustomer(e:React.FormEvent){
+  e.preventDefault();
+  if(!String(form.name||'').trim()){toast.error('Name is required');return;}
+  if(!form.id&&owner){
+   const err=validateInitialRegistration(initialReg);
+   if(err){toast.error(err);return;}
+  }
+  const payload:R={name:form.name,phone:form.phone||undefined,address:form.address||undefined,notes:form.notes||undefined,...(form.id?{status:form.status}:{})};
+  if(!form.id&&owner)Object.assign(payload,buildInitialRegistrationPayload(initialReg));
+  await submit(form.id?`/customers/${form.id}`:'/customers',payload,()=>{setOpen(false);setForm({});setInitialReg(defaultInitialRegistrationFields());},form.id?'PATCH':'POST');
+ }
  const bottleName=(id:string)=>String(bottles.find((b:R)=>b.id===id)?.name||'Bottle');
  const list=customers||[];
  const q=debouncedSearch.trim().toLowerCase();
@@ -74,8 +92,8 @@ function Customers(){
   {name:'Status',hideOnMobile:true,render:r=><span className="tag">{r.status}</span>},
  ];
  return <>
-  <Head title="Customers" action={<div className="flex flex-wrap gap-2"><QueryRefreshButton queryKey={queryKeys.customers.all()}/><button className="btn btn-primary" onClick={()=>{setOpen(!open);setForm({})}}><Plus size={16}/> Add customer</button></div>}/>
-  {open&&<Panel title="Customer profile"><form className="grid sm:grid-cols-2 gap-3" onSubmit={async e=>{e.preventDefault();await submit(form.id?`/customers/${form.id}`:'/customers',{name:form.name,phone:form.phone||undefined,address:form.address||undefined,notes:form.notes||undefined,...(form.id?{status:form.status}: {})},()=>{setOpen(false);setForm({})},form.id?'PATCH':'POST')}}><Input label="Name" value={form.name||''} onChange={v=>setForm(x=>({...x,name:v}))} required={false}/><Input label="Phone (09 / 10 — for sales & portal login)" value={form.phone||''} onChange={v=>setForm(x=>({...x,phone:v}))} placeholder="09xxxxxxxx" required={false}/><Input label="Address" value={form.address||''} onChange={v=>setForm(x=>({...x,address:v}))} required={false}/><Input label="Notes" value={form.notes||''} onChange={v=>setForm(x=>({...x,notes:v}))} required={false}/>{form.id&&<Select label="Status" value={form.status||'ACTIVE'} onChange={v=>setForm(x=>({...x,status:v}))} options={[{id:'ACTIVE',name:'Active'},{id:'INACTIVE',name:'Inactive'}]}/>}<div className="sm:col-span-2"><Btn busy={busy}>Save customer</Btn></div></form></Panel>}
+  <Head title="Customers" action={<div className="flex flex-wrap gap-2"><QueryRefreshButton queryKey={queryKeys.customers.all()}/><button className="btn btn-primary" onClick={()=>{setOpen(!open);setForm({});setInitialReg(defaultInitialRegistrationFields())}}><Plus size={16}/> Add customer</button></div>}/>
+  {open&&<Panel title="Customer profile"><form className="grid sm:grid-cols-2 gap-3" onSubmit={saveCustomer}><Input label="Name" value={form.name||''} onChange={v=>setForm(x=>({...x,name:v}))} required={false}/><Input label="Phone (09 / 10 — for sales & portal login)" value={form.phone||''} onChange={v=>setForm(x=>({...x,phone:v}))} placeholder="09xxxxxxxx" required={false}/><Input label="Address" value={form.address||''} onChange={v=>setForm(x=>({...x,address:v}))} required={false}/><Input label="Notes" value={form.notes||''} onChange={v=>setForm(x=>({...x,notes:v}))} required={false}/>{form.id&&<Select label="Status" value={form.status||'ACTIVE'} onChange={v=>setForm(x=>({...x,status:v}))} options={[{id:'ACTIVE',name:'Active'},{id:'INACTIVE',name:'Inactive'}]}/>}{!form.id&&owner&&<CustomerInitialRegistrationSection fields={initialReg} onChange={patchInitialReg} bottles={(bottles as R[]).filter((b:R)=>b.active!==false).map((b:R)=>({id:String(b.id),name:String(b.name)}))}/>}<div className="sm:col-span-2"><Btn busy={busy}>Save customer</Btn></div></form></Panel>}
   <Panel compact title="Summary">
    <p className="muted text-xs mb-3">Payment and bottle totals for the list below (search + filter).</p>
    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
@@ -92,7 +110,7 @@ function Customers(){
   </div>
   {customersLoading&&!customers?(<><div className="md:hidden"><SkeletonTable rows={5} cols={1}/></div><div className="hidden md:block"><SkeletonTable rows={8} cols={6}/></div></>):(<>
    <ResponsiveList rows={rows} columns={columns} emptyMessage="No customers match your search or filter." onRowClick={r=>router.push(`/customers/${r.id}`)}/>
-   <DesktopTable rows={rows} columns={[...columns,{name:'Actions',render:r=><div className="flex gap-3 whitespace-nowrap"><Link href={`/customers/${r.id}`} className="text-primary font-bold text-sm">History</Link><button type="button" className="muted text-sm" onClick={()=>{setForm(r);setOpen(true)}}>Edit</button></div>}]}/>
+   <DesktopTable rows={rows} columns={[...columns,{name:'Actions',render:r=><div className="flex gap-3 whitespace-nowrap"><Link href={`/customers/${r.id}`} className="text-primary font-bold text-sm">History</Link><button type="button" className="muted text-sm" onClick={()=>{setForm(r);setInitialReg(defaultInitialRegistrationFields());setOpen(true)}}>Edit</button></div>}]}/>
   </>)}
  </>;
 }

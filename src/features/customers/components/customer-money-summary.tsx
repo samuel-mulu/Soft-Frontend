@@ -6,6 +6,7 @@ type MoneyBreakdown = {
   drinkOutstanding?: unknown;
   compensationOutstanding?: unknown;
   customerCredit?: unknown;
+  openingMoney?: unknown;
 };
 
 const n = (v: unknown) => Number(v || 0);
@@ -31,7 +32,9 @@ export function CustomerMoneySummary({
   const net = presentCustomerBalance(n(moneyOutstanding), 'money', viewer);
   const drink = presentCustomerBalance(n(moneyBreakdown?.drinkOutstanding), 'money', viewer);
   const comp = presentCustomerBalance(n(moneyBreakdown?.compensationOutstanding), 'money', viewer);
+  const opening = presentCustomerBalance(n(moneyBreakdown?.openingMoney), 'money', viewer);
   const creditInternal = n(moneyBreakdown?.customerCredit);
+  const openingInternal = n(moneyBreakdown?.openingMoney);
 
   return (
     <section className="rounded-xl border border-border bg-card p-4 md:p-5">
@@ -40,6 +43,12 @@ export function CustomerMoneySummary({
       <p className={`text-sm font-semibold mt-1 ${toneCls[net.tone]}`}>{net.label}</p>
       {!compact && (
         <ul className="mt-4 space-y-2 text-sm">
+          {Math.abs(openingInternal) > 0.001 && (
+            <li className="flex justify-between gap-3 items-center">
+              <span className="muted">Opening (manual → digital)</span>
+              <span className={`font-bold tabular-nums ${toneCls[opening.tone]}`}>{opening.formatted}</span>
+            </li>
+          )}
           <li className="flex justify-between gap-3 items-center">
             <span className="muted">Drink purchases</span>
             <span className={`font-bold tabular-nums ${toneCls[drink.tone]}`}>{drink.formatted}</span>
