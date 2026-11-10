@@ -1,4 +1,5 @@
 import {
+  buildBottleSummaryLines,
   buildPortalPaymentRows,
   portalBottleMovementLabel,
   portalMoneyStatus,
@@ -36,5 +37,24 @@ describe('buildPortalPaymentRows', () => {
     });
     expect(rows).toHaveLength(1);
     expect(rows[0].category).toBe('payment');
+  });
+});
+
+describe('buildBottleSummaryLines', () => {
+  it('uses bottlesPerDozen from bottle types (not default 12)', () => {
+    const lines = buildBottleSummaryLines(
+      [{ bottleTypeId: 'pepsi', outstanding: 984 }],
+      [{ id: 'pepsi', name: 'Pepsi', bottlesPerDozen: 24 }],
+    );
+    expect(lines[0].perDozen).toBe(24);
+    expect(lines[0].owed).toBe(984);
+  });
+
+  it('falls back to 12 when bottlesPerDozen is missing (would double a 24-pack)', () => {
+    const lines = buildBottleSummaryLines(
+      [{ bottleTypeId: 'pepsi', outstanding: 984 }],
+      [{ id: 'pepsi', name: 'Pepsi' }],
+    );
+    expect(lines[0].perDozen).toBe(12);
   });
 });
